@@ -19,7 +19,7 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useTheme();
-  const { signOut, user } = useAuth();
+  const { signOut, user, isAdmin } = useAuth();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -75,8 +75,8 @@ export default function ChatPage() {
             <Sparkles className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>AI File Search</h1>
-            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Powered by Gemini 2.5 Flash</p>
+            <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>AI CALC</h1>
+            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Desenvolvido por Ensino Plus</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -87,13 +87,15 @@ export default function ChatPage() {
           >
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
-          <a
-            href="/admin"
-            className={`text-sm transition-colors flex items-center gap-2 px-4 py-2 rounded-lg ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
-          >
-            <Paperclip className="w-4 h-4" />
-            Manage Files
-          </a>
+          {isAdmin && (
+            <a
+              href="/admin"
+              className={`text-sm transition-colors flex items-center gap-2 px-4 py-2 rounded-lg ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
+            >
+              <Paperclip className="w-4 h-4" />
+              Manage Files
+            </a>
+          )}
           <button
             onClick={signOut}
             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-white/5 text-gray-400 hover:text-red-400' : 'hover:bg-gray-200 text-gray-600 hover:text-red-600'}`}
