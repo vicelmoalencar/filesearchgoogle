@@ -24,17 +24,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   // Check if user is admin
-  const checkIsAdmin = async (userId: string) => {
+  const checkIsAdmin = async (userEmail: string) => {
     setCheckingAdmin(true);
     try {
-      const { data, error } = await supabase
-        .from('admins')
-        .select('usuario_id')
-        .eq('usuario_id', userId)
+      console.log('Checking admin status for user email:', userEmail);
+
+      // First, get the user ID from the users table by email
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', userEmail)
         .single();
 
-      setIsAdmin(!!data && !error);
+      console.log('User lookup result:', { userData, userError });
+
+      if (userError || !userData) {
+        console.log('User not found in users table');
+        setIsAdmin(false);
+        return;
+      }
+
+      const customUserId = userData.id;
+      console.log('Custom user ID:', customUserId);
+
+      // Now check if this user ID exists in the admins table
+      const { data: adminData, error: adminError } = await supabase
+        .from('admins')
+        .select('usuario_id')
+        .eq('usuario_id', customUserId)
+        .single();
+
+      console.log('Admin check result:', { adminData, adminError });
+
+      setIsAdmin(!!adminData && !adminError);
     } catch (error) {
+      console.error('Error checking admin status:', error);
       setIsAdmin(false);
     } finally {
       setCheckingAdmin(false);
@@ -45,8 +69,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session?.user) {
-        checkIsAdmin(session.user.id);
+      if (session?.user?.email) {
+        checkIsAdmin(session.user.email);
       }
       setLoading(false);
     });
@@ -54,8 +78,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for changes on auth state (sign in, sign out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) {
-        checkIsAdmin(session.user.id);
+      if (session?.user?.email) {
+        checkIsAdmin(session.user.email);
       } else {
         setIsAdmin(false);
       }
