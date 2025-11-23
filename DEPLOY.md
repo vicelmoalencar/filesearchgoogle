@@ -5,24 +5,42 @@ Guia completo para fazer deploy do AI File Search no Easypanel.
 ## 📋 Pré-requisitos
 
 - Conta no Easypanel
-- Repositório GitHub configurado: https://github.com/vicelmoalencar/filesearch.git
+- Repositório GitHub configurado: https://github.com/vicelmoalencar/filesearch.git (privado)
 - API Key do Google Gemini
 
 ## 🔧 Passo a Passo
 
-### 1. Criar Novo Projeto no Easypanel
+### 1. Conectar GitHub ao Easypanel (Repositório Privado)
+
+Como o repositório é **privado**, você precisa primeiro autorizar o Easypanel:
 
 1. Acesse seu painel do Easypanel
-2. Clique em **"Create Project"**
-3. Escolha **"Deploy from GitHub"**
+2. Vá em **Settings** (canto superior direito)
+3. Clique em **GitHub Integration**
+4. Clique em **Connect GitHub** ou **Install GitHub App**
+5. Você será redirecionado para o GitHub
+6. Selecione sua conta: `vicelmoalencar`
+7. Escolha a opção de acesso:
+   - **All repositories** (mais fácil) ou
+   - **Only select repositories** → Marque `filesearch`
+8. Clique em **Install & Authorize**
+9. Volte ao Easypanel (redirecionamento automático)
 
-### 2. Conectar Repositório
+✅ Agora o Easypanel pode acessar seu repositório privado!
+
+### 2. Criar Novo Projeto no Easypanel
+
+1. No Easypanel, clique em **"Create Project"**
+2. Escolha **"Deploy from GitHub"**
+3. Agora você verá o repositório `vicelmoalencar/filesearch` na lista
+
+### 3. Conectar Repositório
 
 1. Selecione o repositório: `vicelmoalencar/filesearch`
 2. Branch: `master`
 3. Build method: **Dockerfile**
 
-### 3. Configurar Variáveis de Ambiente
+### 4. Configurar Variáveis de Ambiente
 
 No Easypanel, vá em **Environment Variables** e adicione:
 
@@ -33,20 +51,20 @@ NODE_ENV=production
 
 **Importante:** Substitua `sua_chave_api_aqui` pela sua chave real da API Gemini.
 
-### 4. Configurações de Build
+### 5. Configurações de Build
 
 - **Build Command**: Não precisa (usa Dockerfile)
 - **Start Command**: Não precisa (definido no Dockerfile)
 - **Port**: 3000
 - **Health Check Path**: `/` (opcional)
 
-### 5. Configurar Domínio
+### 6. Configurar Domínio
 
 1. Em **Domains**, adicione seu domínio customizado
 2. Ou use o domínio fornecido pelo Easypanel
 3. Habilite HTTPS automático
 
-### 6. Deploy
+### 7. Deploy
 
 1. Clique em **Deploy**
 2. Aguarde o build completar (2-5 minutos)
