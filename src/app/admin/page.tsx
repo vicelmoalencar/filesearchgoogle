@@ -1,0 +1,183 @@
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { Upload, Trash2, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+
+interface FileItem {
+    name: string;
+    displayName: string;
+    mimeType: string;
+    state: string;
+    uri: string;
+}
+
+export default function AdminPage() {
+    const [files, setFiles] = useState<FileItem[]>([]);
+    const [uploading, setUploading] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchFiles();
+    }, []);
+
+    const fetchFiles = async () => {
+        try {
+            const res = await fetch("/api/files");
+            const data = await res.json();
+            if (data.files) {
+                setFiles(data.files);
+            }
+        } catch (error) {
+            console.error("Failed to fetch files", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return;
+
+        setUploading(true);
+        const file = e.target.files[0];
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const res = await fetch("/api/upload", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (res.ok) {
+                await fetchFiles();
+            } else {
+                alert("Upload failed");
+            }
+        } catch (error) {
+            console.error("Upload error", error);
+            alert("Upload error");
+        } finally {
+            setUploading(false);
+            // Reset input
+            e.target.value = "";
+        }
+    };
+
+    const handleDelete = async (name: string) => {
+        if (!confirm("Are you sure you want to delete this file?")) return;
+
+        try {
+            const res = await fetch(`/api/files?name=${name}`, {
+                method: "DELETE",
+            });
+
+            if (res.ok) {
+                setFiles(files.filter((f) => f.name !== name));
+            } else {
+                alert("Delete failed");
+            }
+        } catch (error) {
+            console.error("Delete error", error);
+        }
+    };
+
+    return (
+        <div className="min-h-screen p-8 max-w-6xl mx-auto">
+            <header className="mb-12 flex justify-between items-center">
+                <div>
+                    <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                        File Manager
+                    </h1>
+                    <p className="text-gray-400 mt-2">Upload and manage your knowledge base</p>
+                </div>
+                <div className="relative">
+                    <input
+                        type="file"
+                        id="file-upload"
+                        className="hidden"
+                        onChange={handleUpload}
+                        disabled={uploading}
+                    />
+                    <label
+                        htmlFor="file-upload"
+                        className={`flex items-center gap-2 px-6 py-3 rounded-full bg-blue-600 hover:bg-blue-500 transition-all cursor-pointer font-medium shadow-lg shadow-blue-900/20 ${uploading ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
+                    >
+                        {uploading ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                            <Upload className="w-5 h-5" />
+                        )}
+                        {uploading ? "Uploading..." : "Upload File"}
+                    </label>
+                </div>
+            </header>
+
+            <div className="grid gap-6">
+                {loading ? (
+                    <div className="text-center py-20 text-gray-500">Loading files...</div>
+                ) : files.length === 0 ? (
+                    <div className="text-center py-20 glass rounded-2xl border-dashed border-2 border-white/10">
+                        <FileText className="w-12 h-12 mx-auto text-gray-600 mb-4" />
+                        <p className="text-gray-400">No files uploaded yet</p>
+                    </div>
+                ) : (
+                    <div className="glass rounded-2xl overflow-hidden">
+                        <table className="w-full text-left">
+                            <thead className="bg-white/5 text-gray-400 text-sm uppercase tracking-wider">
+                                <tr>
+                                    <th className="p-6 font-medium">Name</th>
+                                    <th className="p-6 font-medium">Type</th>
+                                    <th className="p-6 font-medium">Status</th>
+                                    <th className="p-6 font-medium text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {files.map((file) => (
+                                    <tr key={file.name} className="hover:bg-white/5 transition-colors">
+                                        <td className="p-6 font-medium flex items-center gap-3">
+                                            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                                                <FileText className="w-5 h-5" />
+                                            </div>
+                                            {file.displayName}
+                                        </td>
+                                        <td className="p-6 text-gray-400 text-sm">{file.mimeType}</td>
+                                        <td className="p-6">
+                                            <span
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${file.state === "ACTIVE"
+                                                        ? "bg-green-500/10 text-green-400"
+                                                        : file.state === "FAILED"
+                                                            ? "bg-red-500/10 text-red-400"
+                                                            : "bg-yellow-500/10 text-yellow-400"
+                                                    }`}
+                                            >
+                                                {file.state === "ACTIVE" ? (
+                                                    <CheckCircle className="w-3 h-3" />
+                                                ) : file.state === "FAILED" ? (
+                                                    <AlertCircle className="w-3 h-3" />
+                                                ) : (
+                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                )}
+                                                {file.state}
+                                            </span>
+                                        </td>
+                                        <td className="p-6 text-right">
+                                            <button
+                                                onClick={() => handleDelete(file.name)}
+                                                className="p-2 rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400 transition-colors"
+                                                title="Delete file"
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
