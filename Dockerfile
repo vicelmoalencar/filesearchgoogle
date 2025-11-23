@@ -16,7 +16,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Disable telemetry during build
+# Accept build arguments
+ARG GEMINI_API_KEY
+ARG NODE_ENV=production
+
+# Set environment variables for build
+ENV GEMINI_API_KEY=${GEMINI_API_KEY}
+ENV NODE_ENV=${NODE_ENV}
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Build the application
@@ -26,7 +32,13 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV=production
+# Accept runtime arguments
+ARG GEMINI_API_KEY
+ARG NODE_ENV=production
+
+# Set runtime environment variables
+ENV GEMINI_API_KEY=${GEMINI_API_KEY}
+ENV NODE_ENV=${NODE_ENV}
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN addgroup --system --gid 1001 nodejs
