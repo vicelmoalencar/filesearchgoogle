@@ -50,8 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Now check if this user ID exists in the admins table
       const { data: adminData, error: adminError } = await supabase
         .from('admins')
-        .select('usuario_id')
-        .eq('usuario_id', customUserId)
+        .select('id')
+        .eq('id', customUserId)
         .single();
 
       console.log('Admin check result:', { adminData, adminError });
