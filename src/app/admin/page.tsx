@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { Upload, Trash2, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import AdminRoute from "@/components/AdminRoute";
 
 interface FileItem {
     name: string;
@@ -84,7 +84,7 @@ export default function AdminPage() {
     };
 
     return (
-        <ProtectedRoute>
+        <AdminRoute>
         <div className="min-h-screen p-8 max-w-6xl mx-auto">
             <header className="mb-12 flex justify-between items-center">
                 <div>
@@ -181,6 +181,6 @@ export default function AdminPage() {
                 )}
             </div>
         </div>
-        </ProtectedRoute>
+        </AdminRoute>
     );
 }
