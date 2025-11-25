@@ -58,10 +58,10 @@ export async function POST(request: NextRequest) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     operation = await genAIClient.operations.get({ operation: operation.name });
                 }
-                store = operation.response || operation.fileSearchStore;
+                store = operation.response;
             } else {
                 // Direct response
-                store = createResponse.fileSearchStore || createResponse;
+                store = createResponse;
             }
         }
 
@@ -86,10 +86,12 @@ export async function POST(request: NextRequest) {
 
         console.log("Upload response:", JSON.stringify(uploadResponse, null, 2));
 
+        let finalUploadResponse: any;
+
         // If response is already populated, upload is complete
-        // No need to poll for completion
         if (uploadResponse.response) {
             console.log("File indexed successfully (instant completion)!");
+            finalUploadResponse = uploadResponse;
         } else {
             // Otherwise, wait for operation to complete
             console.log("Waiting for indexing to complete...");
@@ -98,14 +100,14 @@ export async function POST(request: NextRequest) {
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 operation = await genAIClient.operations.get({ operation: operation.name });
             }
-            uploadResponse = operation;
+            finalUploadResponse = operation; // The completed operation object
             console.log("File indexed successfully (after polling)!");
         }
 
         // Delete temp file
         await unlink(tempFilePath);
 
-        const documentName = uploadResponse.response?.name || uploadResponse.name;
+        const documentName = finalUploadResponse.response?.name;
 
         return NextResponse.json({
             success: true,

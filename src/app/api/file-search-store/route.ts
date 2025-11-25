@@ -7,12 +7,16 @@ export async function GET(request: NextRequest) {
     try {
         console.log("Checking for existing File Search Store...");
 
-        // List all stores
-        const stores = await genAIClient.fileSearchStores.list();
+        // List all stores and collect them into an array
+        const storesResult = await genAIClient.fileSearchStores.list();
+        const allStores = [];
+        for await (const s of storesResult) {
+            allStores.push(s);
+        }
 
         // Find existing store by name
-        let store = stores.fileSearchStores?.find(
-            (s: any) => s.displayName === FILE_SEARCH_STORE_NAME
+        let store = allStores.find(
+            (s) => s.displayName === FILE_SEARCH_STORE_NAME
         );
 
         if (store) {
@@ -36,7 +40,7 @@ export async function GET(request: NextRequest) {
             }
         });
 
-        store = createOp.fileSearchStore;
+        store = createOp;
         console.log("Store created:", store?.name);
 
         return NextResponse.json({
@@ -62,15 +66,19 @@ export async function GET(request: NextRequest) {
 // Delete File Search Store
 export async function DELETE(request: NextRequest) {
     try {
-        const stores = await genAIClient.fileSearchStores.list();
-        const store = stores.fileSearchStores?.find(
-            (s: any) => s.displayName === FILE_SEARCH_STORE_NAME
+        const storesResult = await genAIClient.fileSearchStores.list();
+        const allStores = [];
+        for await (const s of storesResult) {
+            allStores.push(s);
+        }
+        const store = allStores.find(
+            (s) => s.displayName === FILE_SEARCH_STORE_NAME
         );
 
-        if (!store) {
+        if (!store || !store.name) {
             return NextResponse.json({
                 success: false,
-                message: "Store not found"
+                message: "Store not found or has no name"
             }, { status: 404 });
         }
 
