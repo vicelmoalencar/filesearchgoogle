@@ -1,11 +1,42 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { fileManager } from "@/lib/gemini";
+import { genAIClient, FILE_SEARCH_STORE_NAME } from "@/lib/gemini";
 
 export async function GET() {
     try {
-        const response = await fileManager.listFiles();
-        return NextResponse.json({ files: response.files });
+        // Get File Search Store
+        const storesIterator = await genAIClient.fileSearchStores.list();
+        const stores = [];
+
+        for await (const s of storesIterator) {
+            stores.push(s);
+        }
+
+        const store = stores.find(
+            (s: any) => s.displayName === FILE_SEARCH_STORE_NAME
+        );
+
+        if (!store || !store.name) {
+            return NextResponse.json({ files: [] });
+        }
+
+        // List documents in the store
+        const documentsIterator = await genAIClient.fileSearchStores.listDocuments({
+            fileSearchStoreName: store.name
+        });
+
+        const documents = [];
+        for await (const doc of documentsIterator) {
+            documents.push({
+                name: doc.name,
+                displayName: doc.displayName || doc.name?.split('/').pop(),
+                mimeType: doc.mimeType || 'application/octet-stream',
+                state: 'ACTIVE',
+                uri: doc.name
+            });
+        }
+
+        return NextResponse.json({ files: documents });
     } catch (error) {
         console.error("List files error:", error);
         return NextResponse.json({ error: "Failed to list files" }, { status: 500 });
@@ -21,7 +52,8 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: "File name is required" }, { status: 400 });
         }
 
-        await fileManager.deleteFile(name);
+        // Delete document from File Search Store
+        await genAIClient.fileSearchStores.deleteDocument({ name });
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error("Delete file error:", error);
