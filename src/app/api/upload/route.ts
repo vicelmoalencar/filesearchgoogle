@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         console.log(`Uploading to store: ${store.name}`);
 
         // Upload file to File Search Store (permanent storage with RAG)
-        let operation = await genAIClient.fileSearchStores.uploadToFileSearchStore({
+        let uploadResponse = await genAIClient.fileSearchStores.uploadToFileSearchStore({
             file: tempFilePath,
             fileSearchStoreName: store.name,
             config: {
@@ -76,11 +76,17 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        // Wait for operation to complete
-        console.log("Waiting for indexing to complete...");
-        while (!operation.done) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            operation = await genAIClient.operations.get({ operation: operation.name });
+        console.log("Upload response:", JSON.stringify(uploadResponse, null, 2));
+
+        // Wait for operation to complete if needed
+        if (uploadResponse.name && !uploadResponse.done) {
+            console.log("Waiting for indexing to complete...");
+            let operation: any = uploadResponse;
+            while (!operation.done) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                operation = await genAIClient.operations.get({ operation: operation.name });
+            }
+            uploadResponse = operation;
         }
 
         console.log("File indexed successfully!");
@@ -91,7 +97,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             success: true,
             file: {
-                name: operation.response?.name,
+                name: uploadResponse.response?.name || uploadResponse.name,
                 displayName: file.name,
                 storeName: store.name,
                 storeDisplayName: store.displayName,
