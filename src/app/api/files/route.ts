@@ -20,23 +20,25 @@ export async function GET() {
             return NextResponse.json({ files: [] });
         }
 
-        // List documents in the store
-        const documentsIterator = await genAIClient.fileSearchStores.listDocuments({
-            fileSearchStoreName: store.name
+        // List documents from File Search Store
+        const documentsIterator = await genAIClient.fileSearchStores.documents.list({
+            parent: store.name
         });
 
-        const documents = [];
+        const files = [];
         for await (const doc of documentsIterator) {
-            documents.push({
+            files.push({
                 name: doc.name,
-                displayName: doc.displayName || doc.name?.split('/').pop(),
+                displayName: doc.displayName,
+                state: doc.state,
+                uri: doc.name,
                 mimeType: doc.mimeType || 'application/octet-stream',
-                state: 'ACTIVE',
-                uri: doc.name
+                size: doc.sizeBytes,
+                createdAt: doc.createTime
             });
         }
 
-        return NextResponse.json({ files: documents });
+        return NextResponse.json({ files });
     } catch (error) {
         console.error("List files error:", error);
         return NextResponse.json({ error: "Failed to list files" }, { status: 500 });
@@ -53,10 +55,20 @@ export async function DELETE(request: NextRequest) {
         }
 
         // Delete document from File Search Store
-        await genAIClient.fileSearchStores.deleteDocument({ name });
+        // force: true é necessário para deletar documentos que foram indexados
+        await genAIClient.fileSearchStores.documents.delete({
+            name,
+            config: {
+                force: true
+            }
+        });
+
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error("Delete file error:", error);
-        return NextResponse.json({ error: "Failed to delete file" }, { status: 500 });
+        return NextResponse.json({
+            error: "Failed to delete file",
+            details: error instanceof Error ? error.message : String(error)
+        }, { status: 500 });
     }
 }

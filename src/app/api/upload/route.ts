@@ -16,11 +16,15 @@ export async function POST(request: NextRequest) {
 
         console.log(`Uploading file: ${file.name} (${file.size} bytes)`);
 
+        // Sanitize filename - remove special characters that might cause issues
+        const sanitizedFileName = file.name.replace(/[^\w\s.-]/g, '_');
+        console.log(`Sanitized filename: ${sanitizedFileName}`);
+
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        // Save to temp file
-        const tempFilePath = path.join(os.tmpdir(), file.name);
+        // Save to temp file with sanitized name
+        const tempFilePath = path.join(os.tmpdir(), sanitizedFileName);
         await writeFile(tempFilePath, buffer);
 
         // Get or create File Search Store
@@ -68,11 +72,15 @@ export async function POST(request: NextRequest) {
         console.log(`Uploading to store: ${store.name}`);
 
         // Upload file to File Search Store (permanent storage with RAG)
+        console.log(`Uploading to File Search Store: ${store.name}`);
+        console.log(`File path: ${tempFilePath}`);
+        console.log(`Display name: ${sanitizedFileName}`);
+
         let uploadResponse = await genAIClient.fileSearchStores.uploadToFileSearchStore({
             file: tempFilePath,
             fileSearchStoreName: store.name,
             config: {
-                displayName: file.name,
+                displayName: sanitizedFileName,
             }
         });
 
@@ -97,11 +105,14 @@ export async function POST(request: NextRequest) {
         // Delete temp file
         await unlink(tempFilePath);
 
+        const documentName = uploadResponse.response?.name || uploadResponse.name;
+
         return NextResponse.json({
             success: true,
             file: {
-                name: uploadResponse.response?.name || uploadResponse.name,
-                displayName: file.name,
+                name: documentName,
+                displayName: sanitizedFileName,
+                originalName: file.name,
                 storeName: store.name,
                 storeDisplayName: store.displayName,
                 size: file.size,

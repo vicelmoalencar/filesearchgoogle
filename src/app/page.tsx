@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Paperclip, Sparkles, Sun, Moon, LogOut } from "lucide-react";
+import { Send, Bot, User, Paperclip, Sparkles, Sun, Moon, LogOut, BarChart3 } from "lucide-react";
 import MessageContent from "@/components/MessageContent";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -88,13 +88,22 @@ export default function ChatPage() {
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
           {isAdmin && (
-            <a
-              href="/admin"
-              className={`text-sm transition-colors flex items-center gap-2 px-4 py-2 rounded-lg ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
-            >
-              <Paperclip className="w-4 h-4" />
-              Manage Files
-            </a>
+            <>
+              <a
+                href="/admin"
+                className={`text-sm transition-colors flex items-center gap-2 px-4 py-2 rounded-lg ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
+              >
+                <Paperclip className="w-4 h-4" />
+                Manage Files
+              </a>
+              <a
+                href="/usage"
+                className={`text-sm transition-colors flex items-center gap-2 px-4 py-2 rounded-lg ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
+              >
+                <BarChart3 className="w-4 h-4" />
+                Usage
+              </a>
+            </>
           )}
           <button
             onClick={signOut}
