@@ -1,6 +1,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { fileManager } from "@/lib/gemini";
+import { genAIClient, FILE_SEARCH_STORE_NAME } from "@/lib/gemini";
 import { writeFile, unlink } from "fs/promises";
 import path from "path";
 import os from "os";
@@ -14,6 +14,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
         }
 
+        console.log(`Uploading file: ${file.name} (${file.size} bytes)`);
+
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
@@ -21,18 +23,65 @@ export async function POST(request: NextRequest) {
         const tempFilePath = path.join(os.tmpdir(), file.name);
         await writeFile(tempFilePath, buffer);
 
-        // Upload to Google File Manager
-        const uploadResponse = await fileManager.uploadFile(tempFilePath, {
-            mimeType: file.type,
-            displayName: file.name,
+        // Get or create File Search Store
+        const storesResponse = await genAIClient.fileSearchStores.list();
+        let store = storesResponse.fileSearchStores?.find(
+            (s: any) => s.displayName === FILE_SEARCH_STORE_NAME
+        );
+
+        if (!store) {
+            console.log("Creating new File Search Store...");
+            const createOp = await genAIClient.fileSearchStores.create({
+                config: {
+                    displayName: FILE_SEARCH_STORE_NAME
+                }
+            });
+            store = createOp.fileSearchStore;
+        }
+
+        if (!store) {
+            throw new Error("Failed to get or create File Search Store");
+        }
+
+        console.log(`Uploading to store: ${store.name}`);
+
+        // Upload file to File Search Store (permanent storage with RAG)
+        let operation = await genAIClient.fileSearchStores.uploadToFileSearchStore({
+            file: tempFilePath,
+            fileSearchStoreName: store.name,
+            config: {
+                displayName: file.name,
+            }
         });
+
+        // Wait for operation to complete
+        console.log("Waiting for indexing to complete...");
+        while (!operation.done) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            operation = await genAIClient.operations.get({ operation: operation.name });
+        }
+
+        console.log("File indexed successfully!");
 
         // Delete temp file
         await unlink(tempFilePath);
 
-        return NextResponse.json({ success: true, file: uploadResponse.file });
+        return NextResponse.json({
+            success: true,
+            file: {
+                name: operation.response?.name,
+                displayName: file.name,
+                storeName: store.name,
+                storeDisplayName: store.displayName,
+                size: file.size,
+                mimeType: file.type
+            }
+        });
     } catch (error) {
         console.error("Upload error:", error);
-        return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+        return NextResponse.json({
+            error: "Upload failed",
+            details: error instanceof Error ? error.message : String(error)
+        }, { status: 500 });
     }
 }
