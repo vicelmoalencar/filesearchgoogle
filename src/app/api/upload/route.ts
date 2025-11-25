@@ -24,22 +24,37 @@ export async function POST(request: NextRequest) {
         await writeFile(tempFilePath, buffer);
 
         // Get or create File Search Store
-        const storesResponse = await genAIClient.fileSearchStores.list();
-        let store = storesResponse.fileSearchStores?.find(
+        const storesIterator = await genAIClient.fileSearchStores.list();
+        const stores = [];
+
+        for await (const s of storesIterator) {
+            stores.push(s);
+        }
+
+        let store = stores.find(
             (s: any) => s.displayName === FILE_SEARCH_STORE_NAME
         );
 
         if (!store) {
             console.log("Creating new File Search Store...");
-            const createOp = await genAIClient.fileSearchStores.create({
+            const createResponse = await genAIClient.fileSearchStores.create({
                 config: {
                     displayName: FILE_SEARCH_STORE_NAME
                 }
             });
-            store = createOp.fileSearchStore;
+
+            // Wait for creation to complete
+            console.log("Waiting for store creation...");
+            let operation: any = createResponse;
+            while (!operation.done && operation.name) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                operation = await genAIClient.operations.get({ operation: operation.name });
+            }
+
+            store = operation.response || operation.fileSearchStore;
         }
 
-        if (!store) {
+        if (!store || !store.name) {
             throw new Error("Failed to get or create File Search Store");
         }
 
