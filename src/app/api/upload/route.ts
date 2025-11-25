@@ -43,15 +43,22 @@ export async function POST(request: NextRequest) {
                 }
             });
 
-            // Wait for creation to complete
-            console.log("Waiting for store creation...");
-            let operation: any = createResponse;
-            while (!operation.done && operation.name) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                operation = await genAIClient.operations.get({ operation: operation.name });
-            }
+            console.log("Create response:", JSON.stringify(createResponse, null, 2));
 
-            store = operation.response || operation.fileSearchStore;
+            // Check if it's an operation or direct response
+            if (createResponse.name && !createResponse.displayName) {
+                // It's an operation, wait for completion
+                console.log("Waiting for store creation operation...");
+                let operation: any = createResponse;
+                while (!operation.done) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    operation = await genAIClient.operations.get({ operation: operation.name });
+                }
+                store = operation.response || operation.fileSearchStore;
+            } else {
+                // Direct response
+                store = createResponse.fileSearchStore || createResponse;
+            }
         }
 
         if (!store || !store.name) {
