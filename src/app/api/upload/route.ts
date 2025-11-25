@@ -78,18 +78,21 @@ export async function POST(request: NextRequest) {
 
         console.log("Upload response:", JSON.stringify(uploadResponse, null, 2));
 
-        // Wait for operation to complete if needed
-        if (uploadResponse.name && !uploadResponse.done) {
+        // If response is already populated, upload is complete
+        // No need to poll for completion
+        if (uploadResponse.response) {
+            console.log("File indexed successfully (instant completion)!");
+        } else {
+            // Otherwise, wait for operation to complete
             console.log("Waiting for indexing to complete...");
             let operation: any = uploadResponse;
-            while (!operation.done) {
+            while (!operation.done && operation.name) {
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 operation = await genAIClient.operations.get({ operation: operation.name });
             }
             uploadResponse = operation;
+            console.log("File indexed successfully (after polling)!");
         }
-
-        console.log("File indexed successfully!");
 
         // Delete temp file
         await unlink(tempFilePath);
