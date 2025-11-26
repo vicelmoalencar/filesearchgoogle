@@ -107,6 +107,51 @@ export default function MessageContent({ text, role, theme = 'dark' }: MessageCo
     return parts.length > 0 ? parts : processBoldAndUrlsOnly(text, keyOffset);
   };
 
+  // Extract video ID and create embed for YouTube or Vimeo
+  const getVideoEmbed = (url: string): React.ReactNode | null => {
+    // YouTube patterns
+    const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+    const youtubeMatch = url.match(youtubeRegex);
+
+    if (youtubeMatch && youtubeMatch[1]) {
+      const videoId = youtubeMatch[1];
+      return (
+        <div className="relative w-full my-4" style={{ paddingBottom: '56.25%' }}>
+          <iframe
+            className="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg"
+            src={`https://www.youtube.com/embed/${videoId}`}
+            title="YouTube video"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      );
+    }
+
+    // Vimeo patterns
+    const vimeoRegex = /(?:vimeo\.com\/)(\d+)/i;
+    const vimeoMatch = url.match(vimeoRegex);
+
+    if (vimeoMatch && vimeoMatch[1]) {
+      const videoId = vimeoMatch[1];
+      return (
+        <div className="relative w-full my-4" style={{ paddingBottom: '56.25%' }}>
+          <iframe
+            className="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg"
+            src={`https://player.vimeo.com/video/${videoId}`}
+            title="Vimeo video"
+            frameBorder="0"
+            allow="autoplay; fullscreen; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   // Process only bold and URLs (no HTML tags)
   const processBoldAndUrlsOnly = (text: string, keyOffset: number): React.ReactNode[] => {
     // Split by bold markers
@@ -128,17 +173,29 @@ export default function MessageContent({ text, role, theme = 'dark' }: MessageCo
 
         urlParts.forEach((urlPart, j) => {
           if (urlPart.match(urlRegex)) {
-            result.push(
-              <a
-                key={`${keyOffset}-url-${i}-${j}`}
-                href={urlPart}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 underline transition-colors break-all"
-              >
-                {urlPart}
-              </a>
-            );
+            // Check if URL is a video (YouTube or Vimeo)
+            const videoEmbed = getVideoEmbed(urlPart);
+
+            if (videoEmbed) {
+              result.push(
+                <React.Fragment key={`${keyOffset}-video-${i}-${j}`}>
+                  {videoEmbed}
+                </React.Fragment>
+              );
+            } else {
+              // Regular link
+              result.push(
+                <a
+                  key={`${keyOffset}-url-${i}-${j}`}
+                  href={urlPart}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-300 underline transition-colors break-all"
+                >
+                  {urlPart}
+                </a>
+              );
+            }
           } else if (urlPart) {
             result.push(<React.Fragment key={`${keyOffset}-text-${i}-${j}`}>{urlPart}</React.Fragment>);
           }
