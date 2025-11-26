@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
         let uploadResponse = await withTimeoutAndRetry(
             () => genAIClient.fileSearchStores.uploadToFileSearchStore({
                 file: tempFilePath!,
-                fileSearchStoreName: store!.name,
+                fileSearchStoreName: store.name as string,
                 config: {
                     displayName: sanitizedFileName,
                 }

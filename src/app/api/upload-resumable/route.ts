@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { genAIClient, FILE_SEARCH_STORE_NAME } from "@/lib/gemini";
-import { writeFile, unlink, readFile } from "fs/promises";
+import { writeFile, unlink } from "fs/promises";
 import path from "path";
 import os from "os";
 
@@ -124,7 +124,9 @@ export async function POST(request: NextRequest) {
         await unlink(tempFilePath);
         tempFilePath = null;
 
-        const documentName = operation.response?.name || uploadResponse.response?.name;
+        // Get the document name from the operation response
+        const documentName = operation.response?.documentName ||
+                            (uploadResponse.response ? uploadResponse.response.documentName : undefined);
 
         return NextResponse.json({
             success: true,
