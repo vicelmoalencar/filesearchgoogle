@@ -7,40 +7,56 @@ interface MessageContentProps {
 }
 
 export default function MessageContent({ text, role, theme = 'dark' }: MessageContentProps) {
-  // Process markdown links [text](url), bold text **text**, and auto-detect URLs
+  // Process markdown links [text](url), images ![alt](url), bold text **text**, and auto-detect URLs
   const processInlineFormatting = (line: string): React.ReactNode[] => {
-    // First, process markdown links [text](url)
-    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
     const parts: React.ReactNode[] = [];
     let lastIndex = 0;
     let match;
 
-    while ((match = linkRegex.exec(line)) !== null) {
-      // Add text before the link
+    // Combined regex to match both images and links in order
+    const combinedRegex = /(!?\[([^\]]*)\]\(([^)]+)\))/g;
+
+    while ((match = combinedRegex.exec(line)) !== null) {
+      // Add text before the match
       if (match.index > lastIndex) {
         const beforeText = line.substring(lastIndex, match.index);
         parts.push(...processBoldAndUrls(beforeText, parts.length));
       }
 
-      // Add the link
-      const linkText = match[1];
-      const linkUrl = match[2];
-      parts.push(
-        <a
-          key={parts.length}
-          href={linkUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-400 hover:text-blue-300 underline transition-colors"
-        >
-          {linkText}
-        </a>
-      );
+      // Check if it's an image (starts with !)
+      if (match[0].startsWith('!')) {
+        const altText = match[2];
+        const imageUrl = match[3];
+        parts.push(
+          <img
+            key={parts.length}
+            src={imageUrl}
+            alt={altText || 'Imagem'}
+            className="max-w-full h-auto rounded-lg my-2 shadow-lg"
+            loading="lazy"
+          />
+        );
+      } else {
+        // It's a regular link
+        const linkText = match[2];
+        const linkUrl = match[3];
+        parts.push(
+          <a
+            key={parts.length}
+            href={linkUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline transition-colors"
+          >
+            {linkText}
+          </a>
+        );
+      }
 
       lastIndex = match.index + match[0].length;
     }
 
-    // Add remaining text after last link
+    // Add remaining text after last match
     if (lastIndex < line.length) {
       const remainingText = line.substring(lastIndex);
       parts.push(...processBoldAndUrls(remainingText, parts.length));
@@ -49,8 +65,50 @@ export default function MessageContent({ text, role, theme = 'dark' }: MessageCo
     return parts.length > 0 ? parts : processBoldAndUrls(line, 0);
   };
 
-  // Process bold text and auto-detect plain URLs
+  // Process bold text, HTML img tags, and auto-detect plain URLs
   const processBoldAndUrls = (text: string, keyOffset: number): React.ReactNode[] => {
+    // First check for HTML img tags
+    const imgTagRegex = /<img\s+([^>]*src=["']([^"']+)["'][^>]*)>/gi;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = imgTagRegex.exec(text)) !== null) {
+      // Add text before the image
+      if (match.index > lastIndex) {
+        const beforeText = text.substring(lastIndex, match.index);
+        parts.push(...processBoldAndUrlsOnly(beforeText, keyOffset + parts.length));
+      }
+
+      // Extract attributes
+      const imgSrc = match[2];
+      const altMatch = match[1].match(/alt=["']([^"']+)["']/i);
+      const altText = altMatch ? altMatch[1] : 'Imagem';
+
+      parts.push(
+        <img
+          key={`${keyOffset}-img-${parts.length}`}
+          src={imgSrc}
+          alt={altText}
+          className="max-w-full h-auto rounded-lg my-2 shadow-lg"
+          loading="lazy"
+        />
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      const remainingText = text.substring(lastIndex);
+      parts.push(...processBoldAndUrlsOnly(remainingText, keyOffset + parts.length));
+    }
+
+    return parts.length > 0 ? parts : processBoldAndUrlsOnly(text, keyOffset);
+  };
+
+  // Process only bold and URLs (no HTML tags)
+  const processBoldAndUrlsOnly = (text: string, keyOffset: number): React.ReactNode[] => {
     // Split by bold markers
     const boldParts = text.split(/(\*\*.*?\*\*)/g);
     const result: React.ReactNode[] = [];
