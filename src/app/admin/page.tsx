@@ -24,10 +24,14 @@ export default function AdminPage() {
 
     const fetchFiles = async () => {
         try {
+            console.log("Fetching files from API...");
             const res = await fetch("/api/files");
             const data = await res.json();
+            console.log("API response:", data);
+            console.log("Number of files:", data.files?.length || 0);
             if (data.files) {
                 setFiles(data.files);
+                console.log("Files set to state:", data.files);
             }
         } catch (error) {
             console.error("Failed to fetch files", error);
@@ -39,25 +43,58 @@ export default function AdminPage() {
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;
 
-        setUploading(true);
         const file = e.target.files[0];
+        const fileSizeMB = file.size / (1024 * 1024);
+
+        // Warn user if file is too large
+        if (fileSizeMB > 10) {
+            const proceed = confirm(
+                `⚠️ ATENÇÃO: Arquivo grande detectado (${fileSizeMB.toFixed(2)}MB)\n\n` +
+                `A API do Gemini tem problemas conhecidos com arquivos maiores que 10MB e provavelmente falhará.\n\n` +
+                `Recomendações:\n` +
+                `• Comprima o PDF antes de fazer upload\n` +
+                `• Divida em arquivos menores (5-10MB)\n` +
+                `• Converta para formato menor se possível\n\n` +
+                `Deseja tentar fazer upload mesmo assim?`
+            );
+            if (!proceed) {
+                e.target.value = "";
+                return;
+            }
+        }
+
+        setUploading(true);
         const formData = new FormData();
         formData.append("file", file);
 
+        // Use resumable upload for files larger than 10MB
+        const uploadEndpoint = fileSizeMB > 10 ? "/api/upload-resumable" : "/api/upload";
+        console.log(`Using ${uploadEndpoint} for ${fileSizeMB.toFixed(2)}MB file`);
+
         try {
-            const res = await fetch("/api/upload", {
+            const res = await fetch(uploadEndpoint, {
                 method: "POST",
                 body: formData,
             });
 
             if (res.ok) {
                 await fetchFiles();
+                alert("File uploaded successfully!");
             } else {
-                alert("Upload failed");
+                const errorData = await res.json();
+                const errorMessage = errorData.error || "Upload failed";
+                const guidance = errorData.guidance || "";
+
+                // Show detailed error with guidance
+                if (guidance) {
+                    alert(`${errorMessage}\n\n${guidance}`);
+                } else {
+                    alert(errorMessage + "\n\nDetails: " + (errorData.details || "Unknown error"));
+                }
             }
         } catch (error) {
             console.error("Upload error", error);
-            alert("Upload error");
+            alert("Network error: Could not connect to the server. Please check your connection and try again.");
         } finally {
             setUploading(false);
             // Reset input
