@@ -37,20 +37,34 @@ export default function MessageContent({ text, role, theme = 'dark' }: MessageCo
           />
         );
       } else {
-        // It's a regular link
+        // It's a regular link - check if it's a video URL
         const linkText = match[2];
         const linkUrl = match[3];
-        parts.push(
-          <a
-            key={parts.length}
-            href={linkUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 underline transition-colors"
-          >
-            {linkText}
-          </a>
-        );
+
+        // Check if the link is a video (YouTube or Vimeo)
+        const videoEmbed = getVideoEmbed(linkUrl);
+
+        if (videoEmbed) {
+          // Display video player instead of link
+          parts.push(
+            <React.Fragment key={parts.length}>
+              {videoEmbed}
+            </React.Fragment>
+          );
+        } else {
+          // Regular text link
+          parts.push(
+            <a
+              key={parts.length}
+              href={linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300 underline transition-colors"
+            >
+              {linkText}
+            </a>
+          );
+        }
       }
 
       lastIndex = match.index + match[0].length;
@@ -118,10 +132,9 @@ export default function MessageContent({ text, role, theme = 'dark' }: MessageCo
       return (
         <div className="relative w-full my-4" style={{ paddingBottom: '56.25%' }}>
           <iframe
-            className="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg"
+            className="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg border-0"
             src={`https://www.youtube.com/embed/${videoId}`}
             title="YouTube video"
-            frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
@@ -138,10 +151,9 @@ export default function MessageContent({ text, role, theme = 'dark' }: MessageCo
       return (
         <div className="relative w-full my-4" style={{ paddingBottom: '56.25%' }}>
           <iframe
-            className="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg"
+            className="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg border-0"
             src={`https://player.vimeo.com/video/${videoId}`}
             title="Vimeo video"
-            frameBorder="0"
             allow="autoplay; fullscreen; picture-in-picture"
             allowFullScreen
           />
