@@ -339,6 +339,22 @@ export default function MessageContent({ text, role, theme = 'dark' }: MessageCo
     return parts.length > 0 ? parts : [<span key="original">{text}</span>];
   };
 
+  // Check if a line contains block-level elements (videos, images)
+  const hasBlockElements = (line: string): boolean => {
+    // Check for video URLs
+    const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+    const vimeoRegex = /(?:vimeo\.com\/)(\d+)/i;
+    const hasVideo = youtubeRegex.test(line) || vimeoRegex.test(line);
+
+    // Check for markdown images
+    const hasImage = /!\[([^\]]*)\]\(([^)]+)\)/i.test(line);
+
+    // Check for HTML img tags
+    const hasHTMLImage = /<img\s+[^>]*>/i.test(line);
+
+    return hasVideo || hasImage || hasHTMLImage;
+  };
+
   const formatText = (content: string) => {
     // First check for HTML tables
     const hasHTMLTable = /<table[^>]*>/i.test(content);
@@ -450,10 +466,13 @@ export default function MessageContent({ text, role, theme = 'dark' }: MessageCo
       // Regular paragraph
       else {
         flushList(index);
+        // Use div instead of p if line contains block elements (videos, images)
+        const useDiv = hasBlockElements(line);
+        const Element = useDiv ? 'div' : 'p';
         formatted.push(
-          <p key={index} className={`my-2 ${textColor} leading-relaxed`}>
+          <Element key={index} className={`my-2 ${textColor} leading-relaxed`}>
             {processInlineFormatting(line)}
-          </p>
+          </Element>
         );
       }
 
