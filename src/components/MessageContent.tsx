@@ -218,7 +218,134 @@ export default function MessageContent({ text, role, theme = 'dark' }: MessageCo
     return result;
   };
 
+  // Process markdown tables
+  const processMarkdownTable = (lines: string[], startIndex: number): { node: React.ReactNode; endIndex: number } | null => {
+    if (startIndex >= lines.length) return null;
+
+    const line = lines[startIndex];
+    // Check if line looks like a table row (contains |)
+    if (!line.includes('|')) return null;
+
+    // Find all consecutive table lines
+    const tableLines: string[] = [];
+    let i = startIndex;
+
+    while (i < lines.length && lines[i].includes('|')) {
+      tableLines.push(lines[i]);
+      i++;
+    }
+
+    if (tableLines.length < 2) return null; // Need at least header and separator
+
+    // Parse table
+    const rows = tableLines.map(line =>
+      line.split('|')
+        .map(cell => cell.trim())
+        .filter(cell => cell.length > 0)
+    );
+
+    if (rows.length < 2) return null;
+
+    const headerRow = rows[0];
+    const separatorRow = rows[1];
+
+    // Check if second row is separator (contains dashes)
+    if (!separatorRow.every(cell => /^[-:]+$/.test(cell))) return null;
+
+    const dataRows = rows.slice(2);
+
+    const tableNode = (
+      <div key={`table-${startIndex}`} className="my-4 overflow-x-auto">
+        <table className={`min-w-full border-collapse ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'}`}>
+          <thead className={theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'}>
+            <tr>
+              {headerRow.map((cell, idx) => (
+                <th
+                  key={idx}
+                  className={`border px-4 py-2 text-left font-semibold ${
+                    theme === 'dark' ? 'border-gray-700 text-gray-200' : 'border-gray-300 text-gray-900'
+                  }`}
+                >
+                  {processInlineFormatting(cell)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {dataRows.map((row, rowIdx) => (
+              <tr key={rowIdx} className={theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'}>
+                {row.map((cell, cellIdx) => (
+                  <td
+                    key={cellIdx}
+                    className={`border px-4 py-2 ${
+                      theme === 'dark' ? 'border-gray-700 text-gray-300' : 'border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    {processInlineFormatting(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+
+    return { node: tableNode, endIndex: i - 1 };
+  };
+
+  // Process HTML tables
+  const processHTMLTable = (text: string): React.ReactNode[] => {
+    const tableRegex = /<table[^>]*>([\s\S]*?)<\/table>/gi;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match;
+    let keyCounter = 0;
+
+    while ((match = tableRegex.exec(text)) !== null) {
+      // Add text before table
+      if (match.index > lastIndex) {
+        const beforeText = text.substring(lastIndex, match.index);
+        parts.push(<span key={`text-${keyCounter++}`}>{beforeText}</span>);
+      }
+
+      // Render HTML table with proper styling
+      const tableHTML = match[0];
+      parts.push(
+        <div
+          key={`table-${keyCounter++}`}
+          className={`my-4 overflow-x-auto ${theme === 'dark' ? '[&_table]:border-gray-700' : '[&_table]:border-gray-300'}`}
+          dangerouslySetInnerHTML={{
+            __html: tableHTML
+              .replace(/<table[^>]*>/i, `<table class="min-w-full border-collapse border ${theme === 'dark' ? 'border-gray-700' : 'border-gray-300'}">`)
+              .replace(/<th/gi, `<th class="border px-4 py-2 text-left font-semibold ${theme === 'dark' ? 'bg-gray-800 border-gray-700 text-gray-200' : 'bg-gray-100 border-gray-300 text-gray-900'}"`)
+              .replace(/<td/gi, `<td class="border px-4 py-2 ${theme === 'dark' ? 'border-gray-700 text-gray-300' : 'border-gray-300 text-gray-700'}"`)
+              .replace(/<tr/gi, `<tr class="${theme === 'dark' ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50'}"`)
+          }}
+        />
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      const remainingText = text.substring(lastIndex);
+      if (remainingText.trim()) {
+        parts.push(<span key={`text-${keyCounter++}`}>{remainingText}</span>);
+      }
+    }
+
+    return parts.length > 0 ? parts : [<span key="original">{text}</span>];
+  };
+
   const formatText = (content: string) => {
+    // First check for HTML tables
+    const hasHTMLTable = /<table[^>]*>/i.test(content);
+    if (hasHTMLTable) {
+      return processHTMLTable(content);
+    }
+
     const lines = content.split('\n');
     const formatted: React.ReactNode[] = [];
     let listItems: { text: string; indent: number }[] = [];
@@ -254,7 +381,20 @@ export default function MessageContent({ text, role, theme = 'dark' }: MessageCo
       }
     };
 
-    lines.forEach((line, index) => {
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      const index = i;
+
+      // Check for markdown table
+      const tableResult = processMarkdownTable(lines, i);
+      if (tableResult) {
+        flushList(index);
+        formatted.push(tableResult.node);
+        i = tableResult.endIndex + 1;
+        continue;
+      }
+
       // Headers
       if (line.startsWith('### ')) {
         flushList(index);
@@ -316,7 +456,9 @@ export default function MessageContent({ text, role, theme = 'dark' }: MessageCo
           </p>
         );
       }
-    });
+
+      i++;
+    }
 
     // Flush any remaining list items
     flushList(lines.length);
