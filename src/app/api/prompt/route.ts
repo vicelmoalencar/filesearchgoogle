@@ -58,12 +58,41 @@ export async function POST(request: Request) {
 
     if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json(
-        { error: 'Prompt inválido' },
+        {
+          error: 'Prompt inválido',
+          details: 'O prompt não pode estar vazio e deve ser uma string'
+        },
+        { status: 400 }
+      );
+    }
+
+    if (prompt.trim().length === 0) {
+      return NextResponse.json(
+        {
+          error: 'Prompt vazio',
+          details: 'O prompt não pode conter apenas espaços em branco'
+        },
         { status: 400 }
       );
     }
 
     ensureDataDir();
+
+    // Verificar permissões de escrita
+    const dataDir = path.join(process.cwd(), 'data');
+    try {
+      fs.accessSync(dataDir, fs.constants.W_OK);
+    } catch (permError) {
+      console.error('Erro de permissão no diretório data/:', permError);
+      return NextResponse.json(
+        {
+          error: 'Erro de permissão',
+          details: `Sem permissão de escrita no diretório: ${dataDir}. Verifique as permissões do container.`
+        },
+        { status: 500 }
+      );
+    }
+
     fs.writeFileSync(PROMPT_FILE, prompt, 'utf-8');
 
     return NextResponse.json({
@@ -73,7 +102,10 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Erro ao salvar prompt:', error);
     return NextResponse.json(
-      { error: 'Erro ao salvar prompt' },
+      {
+        error: 'Erro ao salvar prompt',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }

@@ -45,7 +45,9 @@ export default function PromptSettingsPage() {
       if (response.ok) {
         setMessage({ type: 'success', text: 'Prompt atualizado com sucesso!' });
       } else {
-        setMessage({ type: 'error', text: data.error || 'Erro ao salvar prompt' });
+        const errorMessage = data.error || 'Erro ao salvar prompt';
+        const errorDetails = data.details ? `\n\n${data.details}` : '';
+        setMessage({ type: 'error', text: errorMessage + errorDetails });
       }
     } catch (error) {
       console.error('Erro ao salvar:', error);
@@ -108,7 +110,7 @@ export default function PromptSettingsPage() {
                 : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800'
             }`}
           >
-            {message.text}
+            <pre className="whitespace-pre-wrap font-sans">{message.text}</pre>
           </div>
         )}
 
