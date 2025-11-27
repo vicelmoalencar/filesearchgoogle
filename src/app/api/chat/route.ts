@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { genAIClient, FILE_SEARCH_STORE_NAME, MODEL_NAME } from "@/lib/gemini";
+import { getSystemPrompt } from "@/app/api/prompt/route";
 
 export async function POST(request: NextRequest) {
     try {
@@ -30,12 +31,15 @@ export async function POST(request: NextRequest) {
 
         console.log(`Using File Search Store: ${store.name}`);
 
+        // Get dynamic system prompt
+        const systemInstruction = getSystemPrompt();
+
         // Generate content with File Search Tool (RAG)
         const response = await genAIClient.models.generateContent({
             model: MODEL_NAME,
             contents: message,
             config: {
-                systemInstruction: "Atue como um especialista em cálculos trabalhistas e no sistema PJe-Calc. Sua principal função é fornecer respostas claras, precisas e objetivas para profissionais da área, utilizando sempre o português do Brasil.\n\n**Diretrizes de Resposta:**\n1.  **Base de Conhecimento:** Priorize sempre as informações contidas nos documentos fornecidos. Responda com base estrita nesse conteúdo.\n2.  **Citação de Fonte:** Apenas se o usuário solicitar explicitamente, informe o link da aula que originou a resposta. Fora dessa situação, não mencione a fonte, nomes de arquivos ou qualquer metadado.\n3.  **Escopo:** Mantenha-se focado nos temas de cálculos trabalhistas e PJe-Calc. Se a pergunta fugir do escopo, informe que você não possui informações sobre o assunto.\n4.  **Linguagem:** Responda de forma direta e profissional, como um consultor.\n5.  **Mídia:**\n    - **Imagens:** Use a sintaxe markdown `![descrição](url)` para exibir imagens (diagramas, gráficos, ilustrações).\n    - **Vídeos:** Inclua URLs completas do YouTube (youtube.com ou youtu.be) ou Vimeo (vimeo.com) que serão automaticamente convertidas em players embarcados. Exemplo: `https://www.youtube.com/watch?v=VIDEO_ID` ou `https://vimeo.com/VIDEO_ID`.\n6.  **Tabelas:** Quando apropriado, organize dados em tabelas usando a sintaxe markdown:\n    ```\n    | Coluna 1 | Coluna 2 | Coluna 3 |\n    | -------- | -------- | -------- |\n    | Dado 1   | Dado 2   | Dado 3   |\n    | Dado 4   | Dado 5   | Dado 6   |\n    ```\n    As tabelas serão renderizadas automaticamente com formatação visual apropriada.",
+                systemInstruction,
                 tools: [{
                     fileSearch: {
                         fileSearchStoreNames: [store.name as string]

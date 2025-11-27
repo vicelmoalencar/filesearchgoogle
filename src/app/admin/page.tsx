@@ -129,6 +129,12 @@ export default function AdminPage() {
                         File Manager
                     </h1>
                     <p className="text-gray-400 mt-2">Upload and manage your knowledge base</p>
+                    <a
+                        href="/admin/prompt"
+                        className="inline-block mt-3 text-sm text-blue-400 hover:text-blue-300 underline"
+                    >
+                        ⚙️ Configurar Prompt do Sistema
+                    </a>
                 </div>
                 <div className="relative">
                     <input
