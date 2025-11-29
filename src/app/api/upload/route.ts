@@ -68,7 +68,10 @@ export async function POST(request: NextRequest) {
             const keyData = getApiKeyById(apiKeyId);
             if (keyData) {
                 apiKey = keyData.apiKey;
-                storeSuffix = `_${keyData.theme.replace(/\s+/g, '_')}`;
+                // Apenas adicionar sufixo se não for a chave default
+                if (keyData.id !== 'default') {
+                    storeSuffix = `_${keyData.theme.replace(/\s+/g, '_')}`;
+                }
             }
         }
 

@@ -7,7 +7,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { name, apiKey, theme, description } = await request.json();
+    const { name, apiKey, theme, description, customPrompt } = await request.json();
     const { id } = await params;
 
     const updates: any = {};
@@ -15,6 +15,7 @@ export async function PUT(
     if (apiKey) updates.apiKey = apiKey;
     if (theme) updates.theme = theme;
     if (description !== undefined) updates.description = description;
+    if (customPrompt !== undefined) updates.customPrompt = customPrompt;
 
     const result = updateApiKey(id, updates);
 

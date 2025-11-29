@@ -1,9 +1,38 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { genAIClient, FILE_SEARCH_STORE_NAME } from "@/lib/gemini";
+import { GoogleGenAI } from "@google/genai";
+import { FILE_SEARCH_STORE_NAME } from "@/lib/gemini";
+import { getApiKeyById } from "@/lib/api-keys-storage";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const { searchParams } = new URL(request.url);
+        const apiKeyId = searchParams.get("apiKeyId");
+
+        // Obter a chave API selecionada
+        let apiKey = process.env.GEMINI_API_KEY;
+        let storeSuffix = "";
+
+        if (apiKeyId) {
+            const keyData = getApiKeyById(apiKeyId);
+            if (keyData) {
+                apiKey = keyData.apiKey;
+                // Apenas adicionar sufixo se não for a chave default
+                if (keyData.id !== 'default') {
+                    storeSuffix = `_${keyData.theme.replace(/\s+/g, '_')}`;
+                }
+            }
+        }
+
+        if (!apiKey) {
+            return NextResponse.json({
+                error: "No API key configured"
+            }, { status: 500 });
+        }
+
+        // Criar cliente com a chave selecionada
+        const genAIClient = new GoogleGenAI({ apiKey });
+
         // Get File Search Store
         const storesIterator = await genAIClient.fileSearchStores.list();
         const stores = [];
@@ -12,8 +41,10 @@ export async function GET() {
             stores.push(s);
         }
 
+        // Buscar store específico do tema ou store padrão
+        const storeDisplayName = FILE_SEARCH_STORE_NAME + storeSuffix;
         const store = stores.find(
-            (s: any) => s.displayName === FILE_SEARCH_STORE_NAME
+            (s: any) => s.displayName === storeDisplayName
         );
 
         if (!store || !store.name) {
@@ -78,10 +109,30 @@ export async function DELETE(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const name = searchParams.get("name");
+        const apiKeyId = searchParams.get("apiKeyId");
 
         if (!name) {
             return NextResponse.json({ error: "File name is required" }, { status: 400 });
         }
+
+        // Obter a chave API selecionada
+        let apiKey = process.env.GEMINI_API_KEY;
+
+        if (apiKeyId) {
+            const keyData = getApiKeyById(apiKeyId);
+            if (keyData) {
+                apiKey = keyData.apiKey;
+            }
+        }
+
+        if (!apiKey) {
+            return NextResponse.json({
+                error: "No API key configured"
+            }, { status: 500 });
+        }
+
+        // Criar cliente com a chave selecionada
+        const genAIClient = new GoogleGenAI({ apiKey });
 
         // Delete document from File Search Store
         // force: true é necessário para deletar documentos que foram indexados

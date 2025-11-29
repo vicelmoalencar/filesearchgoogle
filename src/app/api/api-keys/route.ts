@@ -18,7 +18,7 @@ export async function GET() {
 // POST - Adiciona nova chave
 export async function POST(request: Request) {
   try {
-    const { name, apiKey, theme, description } = await request.json();
+    const { name, apiKey, theme, description, customPrompt } = await request.json();
 
     if (!name || !apiKey || !theme) {
       return NextResponse.json(
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = addApiKey({ name, apiKey, theme, description });
+    const result = addApiKey({ name, apiKey, theme, description, customPrompt });
 
     if (!result.success) {
       return NextResponse.json(

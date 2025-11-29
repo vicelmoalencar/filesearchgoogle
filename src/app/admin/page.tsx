@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Upload, Trash2, FileText, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import AdminRoute from "@/components/AdminRoute";
 
@@ -26,28 +26,17 @@ export default function AdminPage() {
     const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
     const [selectedKeyId, setSelectedKeyId] = useState<string>("");
 
-    useEffect(() => {
-        fetchFiles();
-        loadApiKeys();
-    }, []);
-
-    const loadApiKeys = async () => {
-        try {
-            const response = await fetch('/api/api-keys');
-            const data = await response.json();
-            if (data.keys && data.keys.length > 0) {
-                setApiKeys(data.keys);
-                setSelectedKeyId(data.keys[0].id);
-            }
-        } catch (error) {
-            console.error('Erro ao carregar chaves:', error);
+    const fetchFiles = useCallback(async () => {
+        if (!selectedKeyId) {
+            console.log("No selectedKeyId yet, skipping fetchFiles");
+            return;
         }
-    };
 
-    const fetchFiles = async () => {
         try {
-            console.log("Fetching files from API...");
-            const res = await fetch("/api/files");
+            setLoading(true);
+            console.log("Fetching files from API with apiKeyId:", selectedKeyId);
+            const url = `/api/files?apiKeyId=${selectedKeyId}`;
+            const res = await fetch(url);
             const data = await res.json();
             console.log("API response:", data);
             console.log("Number of files:", data.files?.length || 0);
@@ -60,13 +49,79 @@ export default function AdminPage() {
         } finally {
             setLoading(false);
         }
+    }, [selectedKeyId]);
+
+    const loadApiKeys = async () => {
+        try {
+            const response = await fetch('/api/api-keys');
+            const data = await response.json();
+            console.log("API Keys loaded:", data.keys);
+            if (data.keys && data.keys.length > 0) {
+                setApiKeys(data.keys);
+                setSelectedKeyId(data.keys[0].id);
+                console.log("Selected key set to:", data.keys[0].id);
+            } else {
+                console.log("No API keys found, loading files without key");
+                setLoading(false);
+            }
+        } catch (error) {
+            console.error('Erro ao carregar chaves:', error);
+            setLoading(false);
+        }
     };
+
+    useEffect(() => {
+        loadApiKeys();
+    }, []);
+
+    // Recarregar arquivos quando a chave selecionada mudar
+    useEffect(() => {
+        console.log("useEffect triggered with selectedKeyId:", selectedKeyId);
+        if (selectedKeyId) {
+            fetchFiles();
+        }
+    }, [selectedKeyId, fetchFiles]);
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!e.target.files || e.target.files.length === 0) return;
 
         const file = e.target.files[0];
         const fileSizeMB = file.size / (1024 * 1024);
+
+        // Validate file type - File Search API only supports documents and text files
+        const allowedTypes = [
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'text/plain',
+            'text/markdown',
+            'text/csv',
+            'text/html',
+            'text/xml',
+            'application/json'
+        ];
+
+        const fileExtension = file.name.split('.').pop()?.toLowerCase();
+        const isAllowedType = allowedTypes.includes(file.type) ||
+                            ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'csv', 'json', 'html', 'xml'].includes(fileExtension || '');
+
+        if (!isAllowedType) {
+            alert(
+                `❌ TIPO DE ARQUIVO NÃO SUPORTADO\n\n` +
+                `O Gemini File Search API não suporta ${file.type || 'este tipo de arquivo'}.\n\n` +
+                `Formatos aceitos:\n` +
+                `• Documentos: PDF, DOCX, XLSX, PPTX, TXT\n` +
+                `• Dados: JSON, CSV, XML, Markdown\n` +
+                `• Código: Python, JavaScript, etc.\n\n` +
+                `❌ NÃO são aceitos: Imagens (JPG, PNG), Vídeos, Áudio`
+            );
+            e.target.value = "";
+            return;
+        }
 
         // Warn user if file is too large
         if (fileSizeMB > 10) {
@@ -131,7 +186,10 @@ export default function AdminPage() {
         if (!confirm("Are you sure you want to delete this file?")) return;
 
         try {
-            const res = await fetch(`/api/files?name=${name}`, {
+            const url = selectedKeyId
+                ? `/api/files?name=${name}&apiKeyId=${selectedKeyId}`
+                : `/api/files?name=${name}`;
+            const res = await fetch(url, {
                 method: "DELETE",
             });
 
