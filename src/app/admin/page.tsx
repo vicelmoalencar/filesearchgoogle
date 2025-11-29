@@ -129,12 +129,20 @@ export default function AdminPage() {
                         File Manager
                     </h1>
                     <p className="text-gray-400 mt-2">Upload and manage your knowledge base</p>
-                    <a
-                        href="/admin/prompt"
-                        className="inline-block mt-3 text-sm text-blue-400 hover:text-blue-300 underline"
-                    >
-                        ⚙️ Configurar Prompt do Sistema
-                    </a>
+                    <div className="flex gap-4 mt-3">
+                        <a
+                            href="/admin/prompt"
+                            className="text-sm text-blue-400 hover:text-blue-300 underline"
+                        >
+                            ⚙️ Configurar Prompt do Sistema
+                        </a>
+                        <a
+                            href="/admin/api-keys"
+                            className="text-sm text-blue-400 hover:text-blue-300 underline"
+                        >
+                            🔑 Gerenciar Chaves de API
+                        </a>
+                    </div>
                 </div>
                 <div className="relative">
                     <input

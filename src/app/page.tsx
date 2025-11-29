@@ -13,10 +13,18 @@ interface Message {
   text: string;
 }
 
+interface ApiKey {
+  id: string;
+  name: string;
+  theme: string;
+}
+
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [selectedKeyId, setSelectedKeyId] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useTheme();
   const { signOut, user, isAdmin } = useAuth();
@@ -28,6 +36,23 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Carregar chaves de API disponíveis
+  useEffect(() => {
+    const loadApiKeys = async () => {
+      try {
+        const response = await fetch('/api/api-keys');
+        const data = await response.json();
+        if (data.keys && data.keys.length > 0) {
+          setApiKeys(data.keys);
+          setSelectedKeyId(data.keys[0].id);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar chaves:', error);
+      }
+    };
+    loadApiKeys();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +72,8 @@ export default function ChatPage() {
           history: messages.map(m => ({
             role: m.role,
             parts: [{ text: m.text }]
-          }))
+          })),
+          apiKeyId: selectedKeyId
         }),
       });
 
@@ -70,14 +96,42 @@ export default function ChatPage() {
     <ProtectedRoute>
       <div className="flex flex-col h-screen max-w-5xl mx-auto p-4 md:p-6">
       <header className={`flex justify-between items-center py-4 mb-4 border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-300'}`}>
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-tr from-blue-500 to-purple-500">
-            <Sparkles className="w-6 h-6 text-white" />
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-gradient-to-tr from-blue-500 to-purple-500">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>AI CALC</h1>
+              <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Desenvolvido por Ensino Plus</p>
+            </div>
           </div>
-          <div>
-            <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>AI CALC</h1>
-            <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Desenvolvido por Ensino Plus</p>
-          </div>
+
+          {apiKeys.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                Chat:
+              </label>
+              <select
+                value={selectedKeyId}
+                onChange={(e) => {
+                  setSelectedKeyId(e.target.value);
+                  setMessages([]);
+                }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                  theme === 'dark'
+                    ? 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                    : 'bg-gray-100 border-gray-300 text-gray-900 hover:bg-gray-200'
+                } border focus:outline-none focus:ring-2 focus:ring-blue-500/50`}
+              >
+                {apiKeys.map((key) => (
+                  <option key={key.id} value={key.id}>
+                    {key.theme} - {key.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button

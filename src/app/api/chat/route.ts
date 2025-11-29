@@ -1,15 +1,38 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { genAIClient, FILE_SEARCH_STORE_NAME, MODEL_NAME } from "@/lib/gemini";
+import { GoogleGenAI } from "@google/genai";
+import { FILE_SEARCH_STORE_NAME, MODEL_NAME } from "@/lib/gemini";
 import { getSystemPrompt } from "@/app/api/prompt/route";
+import { getApiKeyById } from "@/lib/api-keys-storage";
 
 export async function POST(request: NextRequest) {
     try {
-        const { message } = await request.json();
+        const { message, apiKeyId } = await request.json();
 
         if (!message) {
             return NextResponse.json({ error: "Message is required" }, { status: 400 });
         }
+
+        // Obter a chave API selecionada
+        let apiKey = process.env.GEMINI_API_KEY;
+        let storeSuffix = "";
+
+        if (apiKeyId) {
+            const keyData = getApiKeyById(apiKeyId);
+            if (keyData) {
+                apiKey = keyData.apiKey;
+                storeSuffix = `_${keyData.theme.replace(/\s+/g, '_')}`;
+            }
+        }
+
+        if (!apiKey) {
+            return NextResponse.json({
+                error: "No API key configured"
+            }, { status: 500 });
+        }
+
+        // Criar cliente com a chave selecionada
+        const genAIClient = new GoogleGenAI({ apiKey });
 
         // Get File Search Store
         const storesIterator = await genAIClient.fileSearchStores.list();
@@ -19,17 +42,19 @@ export async function POST(request: NextRequest) {
             stores.push(store);
         }
 
+        // Buscar store específico do tema ou store padrão
+        const storeDisplayName = FILE_SEARCH_STORE_NAME + storeSuffix;
         const store = stores.find(
-            (s: any) => s.displayName === FILE_SEARCH_STORE_NAME
+            (s: any) => s.displayName === storeDisplayName
         );
 
         if (!store || !store.name) {
             return NextResponse.json({
-                error: "No File Search Store found. Please upload files first.",
+                error: `No File Search Store found for this chat. Please upload files first.`,
             }, { status: 404 });
         }
 
-        console.log(`Using File Search Store: ${store.name}`);
+        console.log(`Using File Search Store: ${store.name} (${storeDisplayName})`);
 
         // Get dynamic system prompt
         const systemInstruction = getSystemPrompt();
