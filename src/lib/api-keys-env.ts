@@ -16,6 +16,13 @@ export interface ApiKey {
   createdAt: string;
 }
 
+// Função auxiliar para processar escapes de quebra de linha
+function processEnvString(value: string | undefined): string | undefined {
+  if (!value) return value;
+  // Converte \n literal em quebra de linha real
+  return value.replace(/\\n/g, '\n');
+}
+
 // Ler todas as chaves de API das variáveis de ambiente
 export function readApiKeys(): ApiKey[] {
   const keys: ApiKey[] = [];
@@ -29,7 +36,7 @@ export function readApiKeys(): ApiKey[] {
       apiKey: defaultKey,
       theme: process.env.DEFAULT_KEY_THEME || 'Geral',
       description: process.env.DEFAULT_KEY_DESCRIPTION || 'Chave configurada via variável de ambiente',
-      customPrompt: process.env.DEFAULT_KEY_PROMPT,
+      customPrompt: processEnvString(process.env.DEFAULT_KEY_PROMPT),
       createdAt: new Date().toISOString()
     });
   }
@@ -52,7 +59,7 @@ export function readApiKeys(): ApiKey[] {
       apiKey: apiKey,
       theme: theme,
       description: process.env[`API_KEY_${index}_DESCRIPTION`],
-      customPrompt: process.env[`API_KEY_${index}_PROMPT`],
+      customPrompt: processEnvString(process.env[`API_KEY_${index}_PROMPT`]),
       createdAt: new Date().toISOString()
     });
 

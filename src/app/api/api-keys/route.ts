@@ -6,12 +6,13 @@ export async function GET() {
   try {
     const keys = readApiKeys();
 
-    // Retornar sem expor as chaves reais
+    // Retornar sem expor as chaves reais (mas incluir customPrompt para visualização)
     const safeKeys = keys.map(key => ({
       id: key.id,
       name: key.name,
       theme: key.theme,
       description: key.description,
+      customPrompt: key.customPrompt, // Incluir prompt customizado para visualização
       createdAt: key.createdAt
     }));
 

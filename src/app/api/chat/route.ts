@@ -7,7 +7,7 @@ import { getApiKeyById } from "@/lib/api-keys-env";
 
 export async function POST(request: NextRequest) {
     try {
-        const { message, apiKeyId } = await request.json();
+        const { message, history, apiKeyId } = await request.json();
 
         if (!message) {
             return NextResponse.json({ error: "Message is required" }, { status: 400 });
@@ -70,10 +70,16 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Generate content with File Search Tool (RAG)
+        // Construir array de contents com histórico + mensagem atual
+        const contents = [
+            ...(history || []), // Histórico de conversação anterior
+            { role: 'user', parts: [{ text: message }] } // Mensagem atual do usuário
+        ];
+
+        // Generate content with File Search Tool (RAG) e histórico de contexto
         const response = await genAIClient.models.generateContent({
             model: MODEL_NAME,
-            contents: message,
+            contents: contents,
             config: {
                 systemInstruction,
                 tools: [{
