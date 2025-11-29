@@ -4,7 +4,11 @@
 // API_KEY_1_KEY=sua-api-key-aqui
 // API_KEY_1_THEME=Tema
 // API_KEY_1_DESCRIPTION=Descrição (opcional)
-// API_KEY_1_PROMPT=Prompt customizado (opcional)
+//
+// IMPORTANTE: Prompts customizados são armazenados em arquivos (data/key-prompts.json)
+// e editáveis via interface admin, NÃO via variáveis de ambiente
+
+import { readKeyPrompts } from './key-prompts-storage';
 
 export interface ApiKey {
   id: string;
@@ -16,16 +20,12 @@ export interface ApiKey {
   createdAt: string;
 }
 
-// Função auxiliar para processar escapes de quebra de linha
-function processEnvString(value: string | undefined): string | undefined {
-  if (!value) return value;
-  // Converte \n literal em quebra de linha real
-  return value.replace(/\\n/g, '\n');
-}
-
 // Ler todas as chaves de API das variáveis de ambiente
 export function readApiKeys(): ApiKey[] {
   const keys: ApiKey[] = [];
+
+  // Ler prompts customizados do arquivo
+  const keyPrompts = readKeyPrompts();
 
   // Chave padrão do .env (se existir)
   const defaultKey = process.env.GEMINI_API_KEY;
@@ -36,7 +36,7 @@ export function readApiKeys(): ApiKey[] {
       apiKey: defaultKey,
       theme: process.env.DEFAULT_KEY_THEME || 'Geral',
       description: process.env.DEFAULT_KEY_DESCRIPTION || 'Chave configurada via variável de ambiente',
-      customPrompt: processEnvString(process.env.DEFAULT_KEY_PROMPT),
+      customPrompt: keyPrompts['default'], // Busca prompt do arquivo
       createdAt: new Date().toISOString()
     });
   }
@@ -53,13 +53,14 @@ export function readApiKeys(): ApiKey[] {
       break;
     }
 
+    const keyId = `env_key_${index}`;
     keys.push({
-      id: `env_key_${index}`,
+      id: keyId,
       name: keyName,
       apiKey: apiKey,
       theme: theme,
       description: process.env[`API_KEY_${index}_DESCRIPTION`],
-      customPrompt: processEnvString(process.env[`API_KEY_${index}_PROMPT`]),
+      customPrompt: keyPrompts[keyId], // Busca prompt do arquivo
       createdAt: new Date().toISOString()
     });
 

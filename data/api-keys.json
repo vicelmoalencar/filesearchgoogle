@@ -1,7 +1,7 @@
 [
   {
     "id": "default",
-    "name": "Chave Padrão",
+    "name": "AIzaSyBbptJuVBsa-xoTI7hhQgpbdfDWiOBdNcA",
     "apiKey": "",
     "theme": "Geral",
     "description": "Chave configurada via variável de ambiente",
@@ -10,7 +10,7 @@
   },
   {
     "name": "Jurisprudência",
-    "apiKey": "",
+    "apiKey": "AIzaSyDGa2D73uHq7TRZyPbGlZ24blgrpao8Jcg",
     "theme": "Jurisprudência de cálculos",
     "description": "",
     "id": "key_1764413268682_yuk0g0d0u",

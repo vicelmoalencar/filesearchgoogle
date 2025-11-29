@@ -18,6 +18,8 @@ export default function PromptSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [systemPrompt, setSystemPrompt] = useState('');
+  const [editingPrompts, setEditingPrompts] = useState<Record<string, string>>({});
+  const [savingKey, setSavingKey] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const router = useRouter();
 
@@ -33,6 +35,12 @@ export default function PromptSettingsPage() {
 
       if (data.keys) {
         setKeys(data.keys);
+        // Inicializar editingPrompts com os prompts atuais
+        const prompts: Record<string, string> = {};
+        data.keys.forEach((key: ApiKey) => {
+          prompts[key.id] = key.customPrompt || '';
+        });
+        setEditingPrompts(prompts);
       }
 
       setLoading(false);
@@ -86,6 +94,83 @@ export default function PromptSettingsPage() {
       setMessage({ type: 'error', text: 'Erro ao salvar prompt' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveKeyPrompt = async (keyId: string) => {
+    setSavingKey(keyId);
+    setMessage(null);
+
+    try {
+      const prompt = editingPrompts[keyId];
+
+      const response = await fetch('/api/key-prompts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ keyId, prompt }),
+      });
+
+      if (response.ok) {
+        setMessage({
+          type: 'success',
+          text: 'Prompt customizado salvo com sucesso!'
+        });
+        // Recarregar chaves para atualizar a visualização
+        await loadKeys();
+      } else {
+        const data = await response.json();
+        setMessage({
+          type: 'error',
+          text: data.error || 'Erro ao salvar prompt customizado'
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao salvar prompt customizado:', error);
+      setMessage({ type: 'error', text: 'Erro ao salvar prompt customizado' });
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const handleDeleteKeyPrompt = async (keyId: string) => {
+    if (!confirm('Deseja realmente remover o prompt customizado? A chave voltará a usar o prompt padrão do sistema.')) {
+      return;
+    }
+
+    setSavingKey(keyId);
+    setMessage(null);
+
+    try {
+      const response = await fetch(`/api/key-prompts?keyId=${keyId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setMessage({
+          type: 'success',
+          text: 'Prompt customizado removido com sucesso!'
+        });
+        // Atualizar estado local
+        setEditingPrompts(prev => ({
+          ...prev,
+          [keyId]: ''
+        }));
+        // Recarregar chaves
+        await loadKeys();
+      } else {
+        const data = await response.json();
+        setMessage({
+          type: 'error',
+          text: data.error || 'Erro ao remover prompt customizado'
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao remover prompt customizado:', error);
+      setMessage({ type: 'error', text: 'Erro ao remover prompt customizado' });
+    } finally {
+      setSavingKey(null);
     }
   };
 
@@ -164,15 +249,13 @@ export default function PromptSettingsPage() {
             ℹ️ Prompts Customizados por Chave
           </h3>
           <p className="text-sm text-blue-800 dark:text-blue-300 mb-3">
-            Para configurar um prompt específico para cada chave de API, use variáveis de ambiente no Easypanel:
+            Cada chave de API pode ter seu próprio prompt customizado. Os prompts são armazenados em arquivos editáveis e podem ser configurados diretamente nesta interface.
           </p>
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 font-mono text-sm">
-            <div className="text-gray-700 dark:text-gray-300 space-y-1">
-              <div><span className="text-blue-600 dark:text-blue-400">DEFAULT_KEY_PROMPT</span>=Prompt para a chave padrão...</div>
-              <div><span className="text-green-600 dark:text-green-400">API_KEY_1_PROMPT</span>=Prompt para a primeira chave adicional...</div>
-              <div><span className="text-green-600 dark:text-green-400">API_KEY_2_PROMPT</span>=Prompt para a segunda chave adicional...</div>
-            </div>
-          </div>
+          <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1 list-disc list-inside">
+            <li>Se uma chave não tiver prompt customizado, ela usará o <strong>Prompt Padrão do Sistema</strong></li>
+            <li>Os prompts customizados são salvos em <code className="bg-white dark:bg-gray-800 px-1 py-0.5 rounded">data/key-prompts.json</code></li>
+            <li>As alterações são aplicadas imediatamente no chat</li>
+          </ul>
         </div>
 
         {/* Lista de chaves e seus prompts */}
@@ -208,7 +291,7 @@ export default function PromptSettingsPage() {
                             ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
                             : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
                         }`}>
-                          {key.customPrompt?.trim() ? '✓ Prompt Customizado (via env)' : '○ Usando Prompt Padrão'}
+                          {key.customPrompt?.trim() ? '✓ Prompt Customizado' : '○ Usando Prompt Padrão'}
                         </span>
                       </div>
                     </div>
@@ -218,33 +301,54 @@ export default function PromptSettingsPage() {
                   </div>
                 </div>
 
-                {/* Prompt Viewer (Expandable) */}
+                {/* Prompt Editor (Expandable) */}
                 {expandedKey === key.id && (
                   <div className="p-6">
                     <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">
-                      Prompt Customizado {key.customPrompt?.trim() ? '(Somente Leitura)' : '(Não Configurado)'}
+                      Prompt Customizado para {key.name}
                     </label>
 
-                    {key.customPrompt?.trim() ? (
-                      <>
-                        <div className="w-full p-4 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg font-mono whitespace-pre-wrap">
-                          {key.customPrompt}
-                        </div>
-                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          Este prompt é configurado via variável de ambiente no Easypanel: {key.id === 'default' ? 'DEFAULT_KEY_PROMPT' : `API_KEY_${key.id.split('_')[2]}_PROMPT`}
-                        </p>
-                      </>
-                    ) : (
-                      <div className="w-full p-4 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg">
-                        Nenhum prompt customizado configurado. Esta chave usará o prompt padrão do sistema.
-                        <br /><br />
-                        Para configurar um prompt específico, adicione a variável de ambiente:
-                        <br />
-                        <span className="font-mono bg-white dark:bg-gray-800 px-2 py-1 rounded mt-2 inline-block">
-                          {key.id === 'default' ? 'DEFAULT_KEY_PROMPT' : `API_KEY_${key.id.split('_')[2]}_PROMPT`}
-                        </span>
+                    <textarea
+                      value={editingPrompts[key.id] || ''}
+                      onChange={(e) => setEditingPrompts(prev => ({
+                        ...prev,
+                        [key.id]: e.target.value
+                      }))}
+                      className="w-full h-64 p-4 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 font-mono"
+                      placeholder="Digite o prompt customizado para esta chave ou deixe vazio para usar o prompt padrão do sistema..."
+                    />
+
+                    <div className="mt-2 flex items-center justify-between">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
+                        {(editingPrompts[key.id] || '').length} caracteres
                       </div>
-                    )}
+
+                      <div className="flex gap-2">
+                        {key.customPrompt?.trim() && (
+                          <button
+                            onClick={() => handleDeleteKeyPrompt(key.id)}
+                            disabled={savingKey === key.id}
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {savingKey === key.id ? 'Removendo...' : 'Remover Prompt'}
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleSaveKeyPrompt(key.id)}
+                          disabled={savingKey === key.id || !(editingPrompts[key.id]?.trim())}
+                          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {savingKey === key.id ? 'Salvando...' : 'Salvar Prompt'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                      {editingPrompts[key.id]?.trim()
+                        ? 'Este prompt será usado especificamente para esta chave de API.'
+                        : 'Sem prompt customizado, esta chave usará o prompt padrão do sistema.'}
+                    </p>
                   </div>
                 )}
               </div>
