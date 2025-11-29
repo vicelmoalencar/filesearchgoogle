@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { FILE_SEARCH_STORE_NAME } from "@/lib/gemini";
-import { getApiKeyById } from "@/lib/api-keys-storage";
+import { getApiKeyById } from "@/lib/api-keys-env";
 import { writeFile, unlink } from "fs/promises";
 import path from "path";
 import os from "os";

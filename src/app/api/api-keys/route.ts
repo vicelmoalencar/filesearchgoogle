@@ -1,57 +1,38 @@
 import { NextResponse } from 'next/server';
-import { readApiKeys, addApiKey } from '@/lib/api-keys-storage';
+import { readApiKeys } from '@/lib/api-keys-env';
 
-// GET - Retorna todas as chaves
+// GET - Retorna as chaves de API disponíveis (sem expor as chaves reais)
 export async function GET() {
   try {
     const keys = readApiKeys();
-    return NextResponse.json({ keys });
+
+    // Retornar sem expor as chaves reais
+    const safeKeys = keys.map(key => ({
+      id: key.id,
+      name: key.name,
+      theme: key.theme,
+      description: key.description,
+      createdAt: key.createdAt
+    }));
+
+    return NextResponse.json({ keys: safeKeys });
   } catch (error) {
-    console.error('Erro ao ler chaves:', error);
+    console.error('Erro ao listar chaves:', error);
     return NextResponse.json(
-      { error: 'Erro ao carregar chaves' },
+      { error: 'Erro ao listar chaves de API' },
       { status: 500 }
     );
   }
 }
 
-// POST - Adiciona nova chave
-export async function POST(request: Request) {
-  try {
-    const { name, apiKey, theme, description, customPrompt } = await request.json();
-
-    if (!name || !apiKey || !theme) {
-      return NextResponse.json(
-        {
-          error: 'Campos obrigatórios faltando',
-          details: 'Nome, chave API e tema são obrigatórios'
-        },
-        { status: 400 }
-      );
-    }
-
-    const result = addApiKey({ name, apiKey, theme, description, customPrompt });
-
-    if (!result.success) {
-      return NextResponse.json(
-        { error: result.error },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      key: result.key,
-      message: 'Chave adicionada com sucesso'
-    });
-  } catch (error) {
-    console.error('Erro ao adicionar chave:', error);
-    return NextResponse.json(
-      {
-        error: 'Erro ao adicionar chave',
-        details: error instanceof Error ? error.message : String(error)
-      },
-      { status: 500 }
-    );
-  }
+// As operações POST, PUT e DELETE não são suportadas
+// As chaves devem ser gerenciadas via variáveis de ambiente no Easypanel
+export async function POST() {
+  return NextResponse.json(
+    {
+      error: 'Operação não suportada',
+      message: 'As chaves de API devem ser configuradas via variáveis de ambiente no Easypanel. Configure API_KEY_N_NAME, API_KEY_N_KEY, API_KEY_N_THEME, etc.'
+    },
+    { status: 405 }
+  );
 }
