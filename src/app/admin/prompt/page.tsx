@@ -128,6 +128,28 @@ export default function PromptSettingsPage() {
     }
   };
 
+  const handleLoadDefaultPrompt = async (keyId: string) => {
+    if (!confirm('Deseja carregar o prompt padrão do sistema? Isso substituirá o conteúdo atual.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/prompt');
+      const data = await response.json();
+
+      if (data.prompt) {
+        setPrompts(prev => ({ ...prev, [keyId]: data.prompt }));
+        setMessage({
+          type: 'success',
+          text: 'Prompt padrão carregado. Clique em "Salvar Prompt" para confirmar.'
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar prompt padrão:', error);
+      setMessage({ type: 'error', text: 'Erro ao carregar prompt padrão' });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -250,13 +272,20 @@ export default function PromptSettingsPage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="mt-4 flex gap-3">
+                    <div className="mt-4 flex gap-3 flex-wrap">
                       <button
                         onClick={() => handleSavePrompt(key.id)}
                         disabled={saving === key.id}
                         className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
                       >
                         {saving === key.id ? 'Salvando...' : 'Salvar Prompt'}
+                      </button>
+                      <button
+                        onClick={() => handleLoadDefaultPrompt(key.id)}
+                        disabled={saving === key.id}
+                        className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors"
+                      >
+                        📋 Carregar Prompt Padrão
                       </button>
                       {prompts[key.id]?.trim() && (
                         <button
