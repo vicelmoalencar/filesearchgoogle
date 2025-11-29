@@ -56,8 +56,16 @@ export async function POST(request: NextRequest) {
 
         console.log(`Using File Search Store: ${store.name} (${storeDisplayName})`);
 
-        // Get dynamic system prompt
-        const systemInstruction = getSystemPrompt();
+        // Get dynamic system prompt - verifica se a chave tem prompt customizado
+        let systemInstruction = getSystemPrompt();
+
+        if (apiKeyId) {
+            const keyData = getApiKeyById(apiKeyId);
+            if (keyData && keyData.customPrompt && keyData.customPrompt.trim()) {
+                systemInstruction = keyData.customPrompt;
+                console.log(`Using custom prompt for key: ${keyData.name}`);
+            }
+        }
 
         // Generate content with File Search Tool (RAG)
         const response = await genAIClient.models.generateContent({

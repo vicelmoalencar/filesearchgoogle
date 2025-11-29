@@ -9,6 +9,7 @@ export interface ApiKey {
   apiKey: string;
   theme: string;
   description?: string;
+  customPrompt?: string;
   createdAt: string;
 }
 

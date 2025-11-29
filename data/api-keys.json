@@ -1,0 +1,18 @@
+[
+  {
+    "id": "default",
+    "name": "Chave Padrão",
+    "apiKey": "AIzaSyAr03THgLHCVhhLtV_VMZO3Yv6v5Q9ayy4",
+    "theme": "Geral",
+    "description": "Chave configurada via variável de ambiente",
+    "createdAt": "2025-11-29T10:47:48.682Z"
+  },
+  {
+    "name": "Jurisprudência",
+    "apiKey": "AIzaSyBIQBIgi_Em_VaGjJO5HgXowllLdcIxEp8",
+    "theme": "Jurisprudência de cálculos",
+    "description": "",
+    "id": "key_1764413268682_yuk0g0d0u",
+    "createdAt": "2025-11-29T10:47:48.682Z"
+  }
+]

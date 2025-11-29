@@ -13,14 +13,36 @@ interface FileItem {
     uri: string;
 }
 
+interface ApiKey {
+    id: string;
+    name: string;
+    theme: string;
+}
+
 export default function AdminPage() {
     const [files, setFiles] = useState<FileItem[]>([]);
     const [uploading, setUploading] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+    const [selectedKeyId, setSelectedKeyId] = useState<string>("");
 
     useEffect(() => {
         fetchFiles();
+        loadApiKeys();
     }, []);
+
+    const loadApiKeys = async () => {
+        try {
+            const response = await fetch('/api/api-keys');
+            const data = await response.json();
+            if (data.keys && data.keys.length > 0) {
+                setApiKeys(data.keys);
+                setSelectedKeyId(data.keys[0].id);
+            }
+        } catch (error) {
+            console.error('Erro ao carregar chaves:', error);
+        }
+    };
 
     const fetchFiles = async () => {
         try {
@@ -66,6 +88,9 @@ export default function AdminPage() {
         setUploading(true);
         const formData = new FormData();
         formData.append("file", file);
+        if (selectedKeyId) {
+            formData.append("apiKeyId", selectedKeyId);
+        }
 
         // Use resumable upload for files larger than 10MB
         const uploadEndpoint = fileSizeMB > 10 ? "/api/upload-resumable" : "/api/upload";
@@ -129,7 +154,7 @@ export default function AdminPage() {
                         File Manager
                     </h1>
                     <p className="text-gray-400 mt-2">Upload and manage your knowledge base</p>
-                    <div className="flex gap-4 mt-3">
+                    <div className="flex gap-4 mt-3 items-center">
                         <a
                             href="/admin/prompt"
                             className="text-sm text-blue-400 hover:text-blue-300 underline"
@@ -142,6 +167,24 @@ export default function AdminPage() {
                         >
                             🔑 Gerenciar Chaves de API
                         </a>
+                        {apiKeys.length > 0 && (
+                            <div className="flex items-center gap-2 ml-4">
+                                <label className="text-sm text-gray-400">
+                                    Upload para:
+                                </label>
+                                <select
+                                    value={selectedKeyId}
+                                    onChange={(e) => setSelectedKeyId(e.target.value)}
+                                    className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white/5 border-white/10 text-white hover:bg-white/10 border focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
+                                >
+                                    {apiKeys.map((key) => (
+                                        <option key={key.id} value={key.id} className="bg-gray-900">
+                                            {key.theme} - {key.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div className="relative">

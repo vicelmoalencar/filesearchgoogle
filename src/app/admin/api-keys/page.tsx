@@ -9,6 +9,7 @@ interface ApiKey {
   apiKey: string;
   theme: string;
   description?: string;
+  customPrompt?: string;
   createdAt: string;
 }
 
@@ -24,7 +25,8 @@ export default function ApiKeysPage() {
     name: '',
     apiKey: '',
     theme: '',
-    description: ''
+    description: '',
+    customPrompt: ''
   });
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export default function ApiKeysPage() {
         });
         setShowForm(false);
         setEditingKey(null);
-        setFormData({ name: '', apiKey: '', theme: '', description: '' });
+        setFormData({ name: '', apiKey: '', theme: '', description: '', customPrompt: '' });
         loadKeys();
       } else {
         setMessage({ type: 'error', text: data.error || 'Erro ao salvar chave' });
@@ -86,7 +88,8 @@ export default function ApiKeysPage() {
       name: key.name,
       apiKey: key.apiKey,
       theme: key.theme,
-      description: key.description || ''
+      description: key.description || '',
+      customPrompt: key.customPrompt || ''
     });
     setShowForm(true);
   };
@@ -149,7 +152,7 @@ export default function ApiKeysPage() {
               onClick={() => {
                 setShowForm(true);
                 setEditingKey(null);
-                setFormData({ name: '', apiKey: '', theme: '', description: '' });
+                setFormData({ name: '', apiKey: '', theme: '', description: '', customPrompt: '' });
               }}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
@@ -233,6 +236,22 @@ export default function ApiKeysPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                  Prompt Customizado (opcional)
+                </label>
+                <textarea
+                  value={formData.customPrompt}
+                  onChange={(e) => setFormData({ ...formData, customPrompt: e.target.value })}
+                  className="w-full p-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+                  rows={8}
+                  placeholder="Se deixar em branco, usará o prompt padrão do sistema. Escreva aqui um prompt específico para este tema/categoria..."
+                />
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Este prompt será usado exclusivamente quando este chat for selecionado. Deixe em branco para usar o prompt padrão configurado em "Configurar Prompt do Sistema".
+                </p>
+              </div>
+
               <div className="flex gap-3">
                 <button
                   type="submit"
@@ -245,7 +264,7 @@ export default function ApiKeysPage() {
                   onClick={() => {
                     setShowForm(false);
                     setEditingKey(null);
-                    setFormData({ name: '', apiKey: '', theme: '', description: '' });
+                    setFormData({ name: '', apiKey: '', theme: '', description: '', customPrompt: '' });
                   }}
                   className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                 >
