@@ -1,6 +1,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { genAIClient, FILE_SEARCH_STORE_NAME } from "@/lib/gemini";
+import { GoogleGenAI } from "@google/genai";
+import { FILE_SEARCH_STORE_NAME } from "@/lib/gemini";
+import { getApiKeyById } from "@/lib/api-keys-env";
 import { writeFile, unlink } from "fs/promises";
 import path from "path";
 import os from "os";
@@ -20,13 +22,40 @@ export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();
         const file = formData.get("file") as File;
+        const apiKeyId = formData.get("apiKeyId") as string;
 
         if (!file) {
             return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
         }
 
+        // Obter a chave API selecionada
+        let apiKey = process.env.GEMINI_API_KEY;
+        let storeSuffix = "";
+
+        if (apiKeyId) {
+            const keyData = getApiKeyById(apiKeyId);
+            if (keyData) {
+                apiKey = keyData.apiKey;
+                // Apenas adicionar sufixo se não for a chave default
+                if (keyData.id !== 'default') {
+                    storeSuffix = `_${keyData.theme.replace(/\s+/g, '_')}`;
+                }
+            }
+        }
+
+        if (!apiKey) {
+            return NextResponse.json({
+                error: "No API key configured"
+            }, { status: 500 });
+        }
+
+        // Criar cliente com a chave selecionada
+        const genAIClient = new GoogleGenAI({ apiKey });
+
         fileSizeMB = file.size / (1024 * 1024);
         console.log(`[Resumable Upload] Uploading file: ${file.name} (${file.size} bytes / ${fileSizeMB.toFixed(2)}MB)`);
+        console.log(`[Resumable Upload] Using API Key ID: ${apiKeyId || 'default'}`);
+        console.log(`[Resumable Upload] Store suffix: ${storeSuffix || 'none (default store)'}`);
 
         // Sanitize filename
         const sanitizedFileName = file.name.replace(/[^\w\s.-]/g, '_');
@@ -48,15 +77,19 @@ export async function POST(request: NextRequest) {
             stores.push(s);
         }
 
+        // Buscar store específico do tema ou store padrão
+        const storeDisplayName = FILE_SEARCH_STORE_NAME + storeSuffix;
+        console.log(`[Resumable Upload] Looking for store: ${storeDisplayName}`);
+
         let store = stores.find(
-            (s: any) => s.displayName === FILE_SEARCH_STORE_NAME
+            (s: any) => s.displayName === storeDisplayName
         );
 
         if (!store) {
-            console.log("[Resumable Upload] Creating new File Search Store...");
+            console.log(`[Resumable Upload] Creating new File Search Store: ${storeDisplayName}...`);
             const createResponse = await genAIClient.fileSearchStores.create({
                 config: {
-                    displayName: FILE_SEARCH_STORE_NAME
+                    displayName: storeDisplayName
                 }
             });
 

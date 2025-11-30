@@ -94,22 +94,22 @@ export default function ChatPage() {
 
   return (
     <ProtectedRoute>
-      <div className="flex flex-col h-screen max-w-5xl mx-auto p-4 md:p-6">
-      <header className={`flex justify-between items-center py-4 mb-4 border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-300'}`}>
-        <div className="flex items-center gap-6">
+      <div className="flex flex-col h-screen max-w-7xl mx-auto p-3 sm:p-4 md:p-6">
+      <header className={`flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 py-4 mb-4 border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-300'}`}>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full lg:w-auto">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-gradient-to-tr from-blue-500 to-purple-500">
-              <Sparkles className="w-6 h-6 text-white" />
+              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
             <div>
-              <h1 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>AI CALC</h1>
+              <h1 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>AI CALC</h1>
               <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Desenvolvido por Ensino Plus</p>
             </div>
           </div>
 
           {apiKeys.length > 0 && (
-            <div className="flex items-center gap-2">
-              <label className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <label className={`text-sm whitespace-nowrap ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                 Chat:
               </label>
               <select
@@ -118,10 +118,15 @@ export default function ChatPage() {
                   setSelectedKeyId(e.target.value);
                   setMessages([]);
                 }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                style={theme === 'dark' ? {
+                  colorScheme: 'dark',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: 'white'
+                } : undefined}
+                className={`flex-1 sm:flex-initial px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                   theme === 'dark'
-                    ? 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-                    : 'bg-gray-100 border-gray-300 text-gray-900 hover:bg-gray-200'
+                    ? 'bg-white/5 border-white/10 text-white hover:bg-white/10 [&>option]:bg-gray-800 [&>option]:text-white'
+                    : 'bg-gray-100 border-gray-300 text-gray-900 hover:bg-gray-200 [&>option]:bg-white [&>option]:text-gray-900'
                 } border focus:outline-none focus:ring-2 focus:ring-blue-500/50`}
               >
                 {apiKeys.map((key) => (
@@ -133,7 +138,7 @@ export default function ChatPage() {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
           <button
             onClick={toggleTheme}
             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-white/5 text-gray-400' : 'hover:bg-gray-200 text-gray-600'}`}
@@ -145,17 +150,18 @@ export default function ChatPage() {
             <>
               <a
                 href="/admin"
-                className={`text-sm transition-colors flex items-center gap-2 px-4 py-2 rounded-lg ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
+                className={`text-xs sm:text-sm transition-colors flex items-center gap-2 px-2 sm:px-4 py-2 rounded-lg ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
               >
                 <Paperclip className="w-4 h-4" />
-                Manage Files
+                <span className="hidden sm:inline">Manage Files</span>
+                <span className="sm:hidden">Files</span>
               </a>
               <a
                 href="/usage"
-                className={`text-sm transition-colors flex items-center gap-2 px-4 py-2 rounded-lg ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
+                className={`text-xs sm:text-sm transition-colors flex items-center gap-2 px-2 sm:px-4 py-2 rounded-lg ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
               >
                 <BarChart3 className="w-4 h-4" />
-                Usage
+                <span className="hidden sm:inline">Usage</span>
               </a>
             </>
           )}
@@ -186,17 +192,17 @@ export default function ChatPage() {
         {messages.map((msg, idx) => (
           <div
             key={idx}
-            className={`flex gap-4 ${msg.role === "user" ? "justify-end" : "justify-start"
+            className={`flex gap-2 sm:gap-4 ${msg.role === "user" ? "justify-end" : "justify-start"
               }`}
           >
             {msg.role === "model" && (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0 mt-1">
-                <Bot className="w-5 h-5 text-white" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0 mt-1">
+                <Bot className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
             )}
 
             <div
-              className={`max-w-[80%] p-5 rounded-2xl ${msg.role === "user"
+              className={`max-w-[85%] sm:max-w-[80%] p-4 sm:p-5 rounded-2xl ${msg.role === "user"
                   ? "bg-blue-600 text-white rounded-tr-none shadow-lg"
                   : theme === 'dark'
                     ? "bg-gray-800/90 backdrop-blur-sm text-gray-100 rounded-tl-none shadow-xl border border-gray-700/50"
@@ -207,8 +213,8 @@ export default function ChatPage() {
             </div>
 
             {msg.role === "user" && (
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`}>
-                <User className={`w-5 h-5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`} />
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`}>
+                <User className={`w-4 h-4 sm:w-5 sm:h-5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`} />
               </div>
             )}
           </div>
