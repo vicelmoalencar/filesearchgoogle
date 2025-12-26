@@ -27,27 +27,27 @@ interface TokenUsageData {
  * Estimar custo baseado no modelo e tokens
  */
 function estimateCost(provider: string, model: string, promptTokens: number, completionTokens: number): number {
-  // Preços em USD por 1M tokens
+  // Preços em BRL (R$) por 1M tokens - valores oficiais GCP
   const pricing: Record<string, { prompt: number; completion: number }> = {
-    // Google Gemini - Preços reais GCP (convertido de R$ para USD, taxa ~5.0)
-    'gemini-2.5-flash': { prompt: 0.367, completion: 3.058 }, // Input: R$1.83/1M, Output: R$15.29/1M
+    // Google Gemini - Preços GCP em R$ (Preço de tabela oficial)
+    'gemini-2.5-flash': { prompt: 1.834620875, completion: 15.288507299 }, // GCP Brasil
     'gemini-2.0-flash-exp': { prompt: 0, completion: 0 },
-    'gemini-pro-1.5': { prompt: 2.5, completion: 10 },
+    'gemini-pro-1.5': { prompt: 12.5, completion: 50 }, // Estimado em R$ (USD 2.5/10 * 5)
 
-    // OpenRouter - Anthropic
-    'anthropic/claude-3.5-sonnet': { prompt: 3, completion: 15 },
-    'anthropic/claude-3-opus': { prompt: 15, completion: 75 },
-    'anthropic/claude-3-haiku': { prompt: 0.25, completion: 1.25 },
+    // OpenRouter - Anthropic (valores em R$, convertidos de USD com taxa ~5.0)
+    'anthropic/claude-3.5-sonnet': { prompt: 15, completion: 75 },
+    'anthropic/claude-3-opus': { prompt: 75, completion: 375 },
+    'anthropic/claude-3-haiku': { prompt: 1.25, completion: 6.25 },
 
-    // OpenRouter - OpenAI
-    'openai/gpt-4-turbo': { prompt: 10, completion: 30 },
-    'openai/gpt-3.5-turbo': { prompt: 0.5, completion: 1.5 },
+    // OpenRouter - OpenAI (valores em R$, convertidos de USD com taxa ~5.0)
+    'openai/gpt-4-turbo': { prompt: 50, completion: 150 },
+    'openai/gpt-3.5-turbo': { prompt: 2.5, completion: 7.5 },
 
-    // OpenRouter - Google via OpenRouter
-    'google/gemini-pro-1.5': { prompt: 2.5, completion: 10 },
+    // OpenRouter - Google via OpenRouter (valores em R$)
+    'google/gemini-pro-1.5': { prompt: 12.5, completion: 50 },
 
-    // OpenRouter - Meta
-    'meta-llama/llama-3-70b-instruct': { prompt: 0.59, completion: 0.79 },
+    // OpenRouter - Meta (valores em R$, convertidos de USD com taxa ~5.0)
+    'meta-llama/llama-3-70b-instruct': { prompt: 2.95, completion: 3.95 },
   };
 
   const modelPricing = pricing[model] || pricing['gemini-2.5-flash'];

@@ -1,36 +1,41 @@
-# Sistema de Dedução de Créditos Baseado em Tokens
+# Sistema de Dedução de Créditos Baseado em Custo (R$)
 
 ## 📋 Visão Geral
 
-Este sistema deduz automaticamente créditos dos usuários baseado no consumo de tokens da IA.
+Este sistema deduz automaticamente créditos dos usuários baseado no **custo real em reais (R$)** do consumo da IA, utilizando preços oficiais do GCP.
 
 ## ⚙️ Configuração
 
-### Tokens por Crédito
+### Custo por Crédito
 
 No arquivo `src/app/api/check-credits/route.ts`, linha 10:
 
 ```typescript
-const TOKENS_PER_CREDIT = 100000; // 100k tokens = 1 crédito
+const COST_PER_CREDIT = 0.10; // R$ 0,10 = 1 crédito
 ```
 
 **Ajuste este valor conforme necessário:**
-- `50000` = Deduz 1 crédito a cada 50 mil tokens
-- `100000` = Deduz 1 crédito a cada 100 mil tokens
-- `200000` = Deduz 1 crédito a cada 200 mil tokens
+- `0.05` = Deduz 1 crédito a cada R$ 0,05
+- `0.10` = Deduz 1 crédito a cada R$ 0,10 (padrão)
+- `0.20` = Deduz 1 crédito a cada R$ 0,20
 
 ## 🔄 Como Funciona
 
-### 1. Registro de Tokens
+### 1. Registro de Uso
 Toda vez que um usuário faz uma pergunta no chat:
 - ✅ Os tokens são contados (prompt + resposta)
+- ✅ O custo é calculado em R$ usando preços GCP oficiais
 - ✅ Salvos na tabela `token_usage` do Supabase
-- ✅ Incluem: user_id, email, modelo, tokens, data
+- ✅ Incluem: user_id, email, modelo, tokens, **estimated_cost (em R$)**, data
+
+**Preços Gemini 2.5 Flash (Brasil):**
+- Input: R$ 1,834620875 por 1M tokens
+- Output: R$ 15,288507299 por 1M tokens
 
 ### 2. Verificação Automática
 Após cada pergunta bem-sucedida:
-- 🔍 O sistema calcula o total de tokens consumidos (últimos 30 dias)
-- 🧮 Divide pelo `TOKENS_PER_CREDIT` para saber quantos créditos deduzir
+- 🔍 O sistema calcula o **custo total acumulado em R$** (últimos 30 dias)
+- 🧮 Divide pelo `COST_PER_CREDIT` (R$ 0,10) para saber quantos créditos deduzir
 - 📞 Se ≥ 1 crédito, chama a API PHP para deduzir
 
 ### 3. Dedução de Créditos
@@ -67,13 +72,13 @@ ORDER BY deducted_at DESC;
 
 ## 📊 Exemplo de Funcionamento
 
-### Cenário 1: Usuário atinge 100k tokens
+### Cenário 1: Usuário atinge R$ 0,10 em custos
 
-1. Usuário faz perguntas que consomem 120.000 tokens no total
-2. Sistema calcula: `120000 / 100000 = 1` crédito
+1. Usuário faz perguntas que custam R$ 0,12 no total
+2. Sistema calcula: `0.12 / 0.10 = 1` crédito (arredonda para baixo)
 3. Chama API PHP para deduzir 1 crédito
-4. Salva registro em `credit_deductions`
-5. Próxima verificação será sobre os 20.000 tokens restantes
+4. Salva registro em `credit_deductions` com `cost_accumulated: 0.12`
+5. Próxima verificação será sobre os R$ 0,02 restantes
 
 ### Cenário 2: Usuário com plano ativo
 
@@ -136,18 +141,25 @@ ORDER BY total_tokens DESC;
 
 ## ⚠️ Notas Importantes
 
-1. **Gemini 2.5 Flash é GRATUITO**: Os custos registrados são $0.00
+1. **Custos em REAIS (R$)**: Todos os valores são calculados usando preços GCP oficiais em BRL
 2. **Deduções não bloqueiam o chat**: Tudo funciona em background
 3. **Deduz apenas quando necessário**: Não deduz frações de crédito
 4. **Respeita planos ativos**: Usuários com plano pagam menos
 5. **Histórico completo**: Tudo registrado no Supabase + MySQL
+6. **Preços atualizados**: Use os valores do arquivo CSV oficial do GCP
 
 ## 🔧 Personalização
 
-### Alterar taxa de conversão
+### Alterar custo por crédito
 Edite `src/app/api/check-credits/route.ts`:
 ```typescript
-const TOKENS_PER_CREDIT = 50000; // Mude para o valor desejado
+const COST_PER_CREDIT = 0.10; // Mude para o valor desejado em R$
+```
+
+### Alterar preços dos modelos
+Edite `src/lib/usage-tracking.ts`:
+```typescript
+'gemini-2.5-flash': { prompt: 1.834620875, completion: 15.288507299 }, // Valores em R$ por 1M tokens
 ```
 
 ### Alterar período de análise
