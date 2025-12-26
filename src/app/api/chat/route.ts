@@ -5,6 +5,7 @@ import { FILE_SEARCH_STORE_NAME, MODEL_NAME } from "@/lib/gemini";
 import { getSystemPrompt } from "@/app/api/prompt/route";
 import { getApiKeyById } from "@/lib/api-keys-env";
 import { trackTokenUsage, estimateTokens } from "@/lib/usage-tracking";
+import { checkAndDeductCredits } from "@/lib/credit-checker";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -185,13 +186,9 @@ export async function POST(request: NextRequest) {
                 console.error('[Chat] Failed to track usage:', err);
             });
 
-            // Verificar e deduzir créditos baseado em tokens (não bloquear a resposta)
-            if (userEmail) {
-                fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/check-credits`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, userEmail })
-                }).catch(err => {
+            // Verificar e deduzir créditos baseado em custo (não bloquear a resposta)
+            if (userId && userEmail) {
+                checkAndDeductCredits(userId, userEmail).catch(err => {
                     console.error('[Chat] Failed to check credits:', err);
                 });
             }
