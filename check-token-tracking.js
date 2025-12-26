@@ -55,7 +55,7 @@ async function checkTracking() {
             console.log(`   Email: ${usage.user_email || 'N/A'}`);
             console.log(`   Modelo: ${usage.model}`);
             console.log(`   Tokens: ${usage.total_tokens} (prompt: ${usage.prompt_tokens}, completion: ${usage.completion_tokens})`);
-            console.log(`   Custo estimado: $${usage.estimated_cost?.toFixed(6) || '0.000000'}`);
+            console.log(`   Custo estimado: R$ ${usage.estimated_cost?.toFixed(6) || '0.000000'}`);
             console.log(`   Status: ${usage.status}`);
             console.log(`   Criado: ${new Date(usage.created_at).toLocaleString('pt-BR')}`);
             console.log('');
@@ -68,7 +68,7 @@ async function checkTracking() {
 
         console.log('📈 Estatísticas (últimos 10 registros):');
         console.log(`   Total de tokens: ${totalTokens.toLocaleString()}`);
-        console.log(`   Custo total: $${totalCost.toFixed(6)}`);
+        console.log(`   Custo total: R$ ${totalCost.toFixed(6)}`);
         console.log(`   Registros com custo zero: ${withZeroCost}/10`);
 
         if (withZeroCost > 0) {
