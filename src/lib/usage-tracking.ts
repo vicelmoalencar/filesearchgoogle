@@ -29,8 +29,8 @@ interface TokenUsageData {
 function estimateCost(provider: string, model: string, promptTokens: number, completionTokens: number): number {
   // Preços em USD por 1M tokens
   const pricing: Record<string, { prompt: number; completion: number }> = {
-    // Google Gemini
-    'gemini-2.5-flash': { prompt: 0, completion: 0 }, // Gratuito até 1500 req/dia
+    // Google Gemini - Preços reais GCP (convertido de R$ para USD, taxa ~5.0)
+    'gemini-2.5-flash': { prompt: 0.367, completion: 3.058 }, // Input: R$1.83/1M, Output: R$15.29/1M
     'gemini-2.0-flash-exp': { prompt: 0, completion: 0 },
     'gemini-pro-1.5': { prompt: 2.5, completion: 10 },
 
