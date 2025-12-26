@@ -15,7 +15,7 @@ const COST_PER_CREDIT = 0.10; // R$ 0,10 = 1 crédito
 
 export interface CreditCheckResult {
     success: boolean;
-    message: string;
+    message?: string;
     cost_accumulated?: number;
     tokens_consumed?: number;
     credits_deducted?: number;
