@@ -33,7 +33,7 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-tr from-blue-500 to-purple-500 mb-4">
             <Sparkles className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">AI File Search</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Chat CCT</h1>
           <p className="text-gray-400">Faça login para continuar</p>
         </div>
 
@@ -103,11 +103,30 @@ export default function LoginPage() {
               {loading ? "Entrando..." : "Entrar"}
             </button>
           </form>
+
+          {/* Links Úteis */}
+          <div className="mt-6 space-y-3">
+            <a
+              href="https://login.ensinoplus.com.br/reset-password"
+              className="block text-center text-sm text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              Esqueci minha senha
+            </a>
+            <div className="text-center">
+              <span className="text-sm text-gray-400">Não tem uma conta? </span>
+              <a
+                href="https://login.ensinoplus.com.br/register"
+                className="text-sm text-purple-400 hover:text-purple-300 transition-colors font-medium"
+              >
+                Registre-se
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
         <p className="text-center text-gray-500 text-sm mt-6">
-          Projeto CCT2026 - AI File Search
+          Projeto CCT2026 - Chat CCT
         </p>
       </div>
     </div>

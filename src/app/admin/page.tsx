@@ -225,6 +225,12 @@ export default function AdminPage() {
                         >
                             🔑 Gerenciar Chaves de API
                         </a>
+                        <a
+                            href="/admin/ai-provider"
+                            className="text-sm text-purple-400 hover:text-purple-300 underline"
+                        >
+                            🤖 Configurar AI Provider
+                        </a>
                         {apiKeys.length > 0 && (
                             <div className="flex items-center gap-2 ml-4">
                                 <label className="text-sm text-gray-400">

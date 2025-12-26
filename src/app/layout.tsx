@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI File Search",
-  description: "Search through your documents with AI",
+  title: "Chat CCT",
+  description: "Chat inteligente com IA para seus documentos",
 };
 
 export default function RootLayout({

@@ -7,6 +7,8 @@ import MessageContent from "@/components/MessageContent";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { supabase } from "@/lib/supabase";
+import CreditsDisplay from "@/components/CreditsDisplay";
 
 interface Message {
   role: "user" | "model";
@@ -64,9 +66,17 @@ export default function ChatPage() {
     setLoading(true);
 
     try {
+      // Obter token de autenticação do Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
+      console.log('[Debug] Auth token:', authToken ? 'Present' : 'Missing');
+
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken && { "Authorization": `Bearer ${authToken}` })
+        },
         body: JSON.stringify({
           message: userMessage,
           history: messages.map(m => ({
@@ -81,6 +91,16 @@ export default function ChatPage() {
 
       if (data.response) {
         setMessages((prev) => [...prev, { role: "model", text: data.response }]);
+      } else if (data.error) {
+        // Verificar se é erro de créditos insuficientes
+        if (res.status === 403) {
+          setMessages((prev) => [...prev, {
+            role: "model",
+            text: `❌ ${data.error}\n\nSeu saldo atual: ${data.credits || 0} créditos.\n\nPara continuar usando o sistema, você precisa recarregar seus créditos.`
+          }]);
+        } else {
+          setMessages((prev) => [...prev, { role: "model", text: `Erro: ${data.error}` }]);
+        }
       } else {
         setMessages((prev) => [...prev, { role: "model", text: "Sorry, I encountered an error." }]);
       }
@@ -102,7 +122,7 @@ export default function ChatPage() {
               <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
             </div>
             <div>
-              <h1 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>AI CALC</h1>
+              <h1 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Chat CCT</h1>
               <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Desenvolvido por Ensino Plus</p>
             </div>
           </div>
@@ -137,6 +157,9 @@ export default function ChatPage() {
               </select>
             </div>
           )}
+
+          {/* Exibir créditos */}
+          <CreditsDisplay />
         </div>
         <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
           <button
@@ -184,7 +207,7 @@ export default function ChatPage() {
             </div>
             <h2 className={`text-xl font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Como posso ajudá-lo hoje?</h2>
             <p className="max-w-md">
-              Posso responder perguntas baseadas nos documentos que você carregou no sistema.
+              Estou aqui para responder suas perguntas com base em uma vasta biblioteca de documentos.
             </p>
           </div>
         )}
