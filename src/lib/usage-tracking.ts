@@ -109,7 +109,8 @@ export async function trackTokenUsage(data: TokenUsageData): Promise<void> {
 
     // Também enviar para o sistema centralizado de créditos
     if (data.userEmail) {
-      trackCreditosUsage({
+      // 1. Registrar uso
+      await trackCreditosUsage({
         userEmail: data.userEmail,
         modelCode: data.model,
         inputTokens: data.promptTokens,
@@ -125,6 +126,17 @@ export async function trackTokenUsage(data: TokenUsageData): Promise<void> {
         }
       }).catch(err => {
         console.error('[Usage Tracking] Error saving to Creditos:', err);
+      });
+
+      // 2. Verificar e deduzir créditos (se necessário)
+      const { checkAndDeductCredits: checkCentralized } = await import('./creditos-centralizados');
+      checkCentralized(data.userEmail).then(result => {
+        if (result.creditsDeducted) {
+          console.log(`[Creditos] ✅ Deduzido ${result.creditsDeducted} crédito(s) de ${data.userEmail}`);
+          console.log(`[Creditos] Saldo restante: ${result.creditsBalance}`);
+        }
+      }).catch(err => {
+        console.error('[Creditos] Error checking/deducting credits:', err);
       });
     }
   } catch (error) {
