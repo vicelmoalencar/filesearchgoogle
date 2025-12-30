@@ -270,12 +270,16 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
             const phpData = await phpResponse.json();
             console.log(`   Resposta:`, phpData);
 
-            if (phpData.success && phpData.data?.credits !== undefined) {
-                creditsBalance = phpData.data.credits;
+            // Aceitar ambos os formatos: {data: {credits}} ou {credits} diretamente
+            const credits = phpData.data?.credits ?? phpData.credits;
+
+            if (phpData.success && credits !== undefined) {
+                creditsBalance = credits;
                 console.log(`✅ [SALDO REAL] MySQL: ${creditsBalance} créditos`);
             } else {
                 console.warn(`⚠️ [API PHP] Resposta inválida, usando fallback`);
                 console.warn(`   Data:`, phpData);
+                console.warn(`   Credits extraído:`, credits);
                 // Fallback: buscar do PostgreSQL (pode estar desatualizado)
                 const creditsResult = await client.query(
                     'SELECT credits_balance FROM users_credits WHERE user_email = $1',
