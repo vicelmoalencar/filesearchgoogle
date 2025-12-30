@@ -347,13 +347,16 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
         await client.query('ROLLBACK');
         console.error('[Creditos] Error checking credits:', error);
 
+        // Buscar config para retornar no erro
+        const config = await getConfig().catch(() => ({ costPerCredit: 0.04 }));
+
         return {
             success: false,
             userEmail,
             creditsBalance: 0,
             accumulatedCost: 0,
-            costPerCredit: COST_PER_CREDIT_BRL,
-            costUntilNextDeduction: COST_PER_CREDIT_BRL,
+            costPerCredit: config.costPerCredit,
+            costUntilNextDeduction: config.costPerCredit,
             error: error instanceof Error ? error.message : 'Unknown error'
         };
     } finally {
