@@ -227,23 +227,50 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
 
         const platformId = platformResult.rows[0].id;
 
-        // 2. Buscar saldo de créditos do usuário
-        const creditsResult = await client.query(
-            'SELECT credits_balance FROM users_credits WHERE user_email = $1',
-            [userEmail]
-        );
-
+        // 2. Buscar saldo REAL de créditos da API PHP
         let creditsBalance = 0;
 
-        if (creditsResult.rows.length > 0) {
-            creditsBalance = creditsResult.rows[0].credits_balance;
-        } else {
-            // Criar usuário se não existir
-            await client.query(
-                'INSERT INTO users_credits (user_email, credits_balance) VALUES ($1, 0)',
+        try {
+            const phpResponse = await fetch(`https://ensinoplus.com.br/autocalc/api/get_credits_by_email.php?email=${encodeURIComponent(userEmail)}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const phpData = await phpResponse.json();
+
+            if (phpData.success && phpData.data?.credits !== undefined) {
+                creditsBalance = phpData.data.credits;
+                console.log(`[Creditos] Saldo real do MySQL: ${creditsBalance} créditos`);
+            } else {
+                console.warn(`[Creditos] ⚠️ Não foi possível obter saldo da API PHP, usando fallback`);
+                // Fallback: buscar do PostgreSQL (pode estar desatualizado)
+                const creditsResult = await client.query(
+                    'SELECT credits_balance FROM users_credits WHERE user_email = $1',
+                    [userEmail]
+                );
+
+                if (creditsResult.rows.length > 0) {
+                    creditsBalance = creditsResult.rows[0].credits_balance;
+                }
+            }
+        } catch (phpError) {
+            console.error('[Creditos] ⚠️ Erro ao buscar saldo da API PHP:', phpError);
+            // Fallback: buscar do PostgreSQL (pode estar desatualizado)
+            const creditsResult = await client.query(
+                'SELECT credits_balance FROM users_credits WHERE user_email = $1',
                 [userEmail]
             );
+
+            if (creditsResult.rows.length > 0) {
+                creditsBalance = creditsResult.rows[0].credits_balance;
+            }
         }
+
+        // Garantir que o usuário existe em users_credits (apenas para tracking)
+        await client.query(
+            'INSERT INTO users_credits (user_email, credits_balance) VALUES ($1, $2) ON CONFLICT (user_email) DO NOTHING',
+            [userEmail, creditsBalance]
+        );
 
         // 3. Buscar custo acumulado
         const accumulationResult = await client.query(
@@ -268,6 +295,26 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
         const creditsToDeduct = Math.floor(accumulatedCost / COST_PER_CREDIT_BRL);
 
         if (creditsToDeduct > 0 && accumulationId) {
+            // Verificar se o usuário tem saldo suficiente
+            if (creditsBalance < creditsToDeduct) {
+                await client.query('COMMIT');
+
+                console.log(`[Creditos] ⚠️ Saldo insuficiente para dedução`);
+                console.log(`[Creditos]    Necessário: ${creditsToDeduct} créditos`);
+                console.log(`[Creditos]    Disponível: ${creditsBalance} créditos`);
+
+                return {
+                    success: false,
+                    message: 'Créditos insuficientes',
+                    userEmail,
+                    creditsBalance,
+                    accumulatedCost,
+                    costPerCredit: COST_PER_CREDIT_BRL,
+                    costUntilNextDeduction: 0,
+                    error: `Você precisa de ${creditsToDeduct} crédito(s), mas tem apenas ${creditsBalance}`
+                };
+            }
+
             console.log(`[Creditos] Deducting ${creditsToDeduct} credits from ${userEmail}`);
             console.log(`[Creditos] Accumulated cost: R$ ${accumulatedCost.toFixed(4)}`);
 
