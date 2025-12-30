@@ -109,35 +109,40 @@ export async function trackTokenUsage(data: TokenUsageData): Promise<void> {
 
     // Também enviar para o sistema centralizado de créditos
     if (data.userEmail) {
-      // 1. Registrar uso
-      await trackCreditosUsage({
-        userEmail: data.userEmail,
-        modelCode: data.model,
-        inputTokens: data.promptTokens,
-        outputTokens: data.completionTokens,
-        audioTokens: 0,
-        requestDurationMs: data.durationMs,
-        status: data.status || 'success',
-        errorMessage: data.errorMessage,
-        metadata: {
-          apiKeyId: data.apiKeyId,
-          apiKeyName: data.apiKeyName,
-          provider: data.provider
-        }
-      }).catch(err => {
-        console.error('[Usage Tracking] Error saving to Creditos:', err);
-      });
+      try {
+        // 1. Registrar uso
+        await trackCreditosUsage({
+          userEmail: data.userEmail,
+          modelCode: data.model,
+          inputTokens: data.promptTokens,
+          outputTokens: data.completionTokens,
+          audioTokens: 0,
+          requestDurationMs: data.durationMs,
+          status: data.status || 'success',
+          errorMessage: data.errorMessage,
+          metadata: {
+            apiKeyId: data.apiKeyId,
+            apiKeyName: data.apiKeyName,
+            provider: data.provider
+          }
+        });
 
-      // 2. Verificar e deduzir créditos (se necessário)
-      const { checkAndDeductCredits: checkCentralized } = await import('./creditos-centralizados');
-      checkCentralized(data.userEmail).then(result => {
+        // 2. Verificar e deduzir créditos (se necessário)
+        const { checkAndDeductCredits: checkCentralized } = await import('./creditos-centralizados');
+        const result = await checkCentralized(data.userEmail);
+
         if (result.creditsDeducted) {
           console.log(`[Creditos] ✅ Deduzido ${result.creditsDeducted} crédito(s) de ${data.userEmail}`);
           console.log(`[Creditos] Saldo restante: ${result.creditsBalance}`);
         }
-      }).catch(err => {
-        console.error('[Creditos] Error checking/deducting credits:', err);
-      });
+      } catch (err) {
+        console.error('[Usage Tracking] ❌ ERRO no sistema de créditos:', err);
+        console.error('[Usage Tracking] Detalhes:', {
+          email: data.userEmail,
+          model: data.model,
+          tokens: data.totalTokens
+        });
+      }
     }
   } catch (error) {
     console.error('[Usage Tracking] Error saving to PostgreSQL:', error);
