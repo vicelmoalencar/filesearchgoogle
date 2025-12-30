@@ -30,8 +30,38 @@ creditosPool.on('error', (err) => {
 // Código da plataforma Chat CCT
 const PLATFORM_CODE = 'chat_cct';
 
-// Configuração: R$ 0,04 = 1 crédito
-const COST_PER_CREDIT_BRL = 0.04;
+// Cache para configurações (evitar consultas repetidas ao banco)
+let configCache: { costPerCredit: number; lastUpdated: number } | null = null;
+const CONFIG_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+/**
+ * Busca configurações do banco com cache
+ */
+async function getConfig(): Promise<{ costPerCredit: number }> {
+    // Verificar cache
+    if (configCache && Date.now() - configCache.lastUpdated < CONFIG_CACHE_TTL) {
+        return { costPerCredit: configCache.costPerCredit };
+    }
+
+    // Buscar do banco
+    const result = await creditosPool.query(
+        "SELECT config_value FROM credit_config WHERE config_key = 'cost_per_credit_brl'"
+    );
+
+    const costPerCredit = result.rows.length > 0
+        ? parseFloat(result.rows[0].config_value)
+        : 0.04; // Fallback para valor padrão
+
+    // Atualizar cache
+    configCache = {
+        costPerCredit,
+        lastUpdated: Date.now()
+    };
+
+    console.log(`[Creditos] Config loaded: R$ ${costPerCredit} = 1 crédito`);
+
+    return { costPerCredit };
+}
 
 /**
  * Interface para tracking de uso
@@ -180,6 +210,10 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
 
     try {
         await client.query('BEGIN');
+
+        // 0. Buscar configuração do custo por crédito
+        const config = await getConfig();
+        const COST_PER_CREDIT_BRL = config.costPerCredit;
 
         // 1. Buscar platform_id
         const platformResult = await client.query(

@@ -10,7 +10,23 @@ const pool = new Pool({
     max: 5,
 });
 
-const COST_PER_CREDIT = 0.04; // R$ 0,04 = 1 crédito
+/**
+ * Busca configuração do custo por crédito do banco
+ */
+async function getCostPerCredit(): Promise<number> {
+    try {
+        const result = await pool.query(
+            "SELECT config_value FROM credit_config WHERE config_key = 'cost_per_credit_brl'"
+        );
+
+        return result.rows.length > 0
+            ? parseFloat(result.rows[0].config_value)
+            : 0.04; // Fallback
+    } catch (error) {
+        console.error('[Credits Progress] Error fetching config:', error);
+        return 0.04; // Fallback
+    }
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -19,6 +35,9 @@ export async function POST(request: NextRequest) {
         if (!email) {
             return NextResponse.json({ error: 'Email is required' }, { status: 400 });
         }
+
+        // Buscar configuração do custo por crédito
+        const COST_PER_CREDIT = await getCostPerCredit();
 
         // Buscar platform_id do Chat CCT
         const platformResult = await pool.query(
