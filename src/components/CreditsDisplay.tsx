@@ -22,6 +22,37 @@ export default function CreditsDisplay() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [debugLoading, setDebugLoading] = useState(false);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+
+  // Função para limpar acumulação presa
+  const cleanupAccumulation = async () => {
+    if (!user?.email) return;
+
+    setCleanupLoading(true);
+    console.log('\n🧹 [CLEANUP] Limpando acumulação presa...');
+
+    try {
+      const response = await fetch('/api/credits-cleanup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, action: 'delete-active' })
+      });
+
+      const data = await response.json();
+      console.log('📊 [CLEANUP] Resultado:', data);
+
+      if (data.success) {
+        alert(`✅ Limpeza concluída!\n\n${data.message}\n\nDeletados: ${data.count} registro(s)\n\nAgora você pode testar a dedução novamente.`);
+      } else {
+        alert(`❌ Erro: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('❌ [CLEANUP] Erro:', error);
+      alert(`❌ Erro ao limpar: ${error}`);
+    } finally {
+      setCleanupLoading(false);
+    }
+  };
 
   // Função de debug para testar dedução manualmente
   const testDeduction = async () => {
@@ -243,30 +274,55 @@ export default function CreditsDisplay() {
             <span className="font-medium">{progress.percentage}%</span>
           </div>
 
-          {/* Debug Button - only show if ready for deduction */}
+          {/* Debug Buttons - only show if ready for deduction */}
           {progress.isReady && (
-            <button
-              onClick={testDeduction}
-              disabled={debugLoading}
-              className={`mt-3 w-full px-3 py-2 text-xs font-medium rounded-md transition-all ${
-                debugLoading
-                  ? 'opacity-50 cursor-not-allowed'
-                  : 'hover:opacity-80'
-              } ${
-                theme === 'dark'
-                  ? 'bg-green-600 text-white'
-                  : 'bg-green-500 text-white'
-              }`}
-            >
-              {debugLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  Testando...
-                </span>
-              ) : (
-                '🧪 Testar Dedução (Debug)'
-              )}
-            </button>
+            <div className="mt-3 space-y-2">
+              <button
+                onClick={testDeduction}
+                disabled={debugLoading || cleanupLoading}
+                className={`w-full px-3 py-2 text-xs font-medium rounded-md transition-all ${
+                  debugLoading || cleanupLoading
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:opacity-80'
+                } ${
+                  theme === 'dark'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-green-500 text-white'
+                }`}
+              >
+                {debugLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Testando...
+                  </span>
+                ) : (
+                  '🧪 Testar Dedução (Debug)'
+                )}
+              </button>
+
+              <button
+                onClick={cleanupAccumulation}
+                disabled={debugLoading || cleanupLoading}
+                className={`w-full px-3 py-2 text-xs font-medium rounded-md transition-all ${
+                  debugLoading || cleanupLoading
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:opacity-80'
+                } ${
+                  theme === 'dark'
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-orange-500 text-white'
+                }`}
+              >
+                {cleanupLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Limpando...
+                  </span>
+                ) : (
+                  '🧹 Limpar Acumulação Presa'
+                )}
+              </button>
+            </div>
           )}
         </div>
       )}
