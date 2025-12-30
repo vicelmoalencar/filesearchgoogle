@@ -209,51 +209,49 @@ export default function CreditsDisplay() {
   if (credits === null) return null;
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Credits Display */}
-      <div className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-all ${
+    <div className="flex flex-col gap-2">
+      {/* Credits Display - Compacto */}
+      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${
         theme === 'dark'
           ? 'bg-white/5 text-gray-300 border border-white/10'
           : 'bg-gray-100 text-gray-700 border border-gray-200'
       }`}>
-        <div className={`p-2 rounded-lg ${
+        <div className={`p-1.5 rounded-md ${
           theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'
         }`}>
-          <Coins className={`w-5 h-5 ${
+          <Coins className={`w-4 h-4 ${
             theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'
           }`} />
         </div>
 
-        <div className="flex flex-col">
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold">{credits}</span>
-            <span className="text-sm opacity-70">créditos</span>
-          </div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-lg font-bold">{credits}</span>
+          <span className="text-xs opacity-70">créditos</span>
         </div>
       </div>
 
-      {/* Progress Bar */}
+      {/* Progress Bar - Compacto */}
       {progress && progress.percentage > 0 && (
-        <div className={`px-4 py-3 rounded-lg transition-all ${
+        <div className={`px-3 py-2 rounded-lg transition-all ${
           theme === 'dark'
             ? 'bg-white/5 border border-white/10'
             : 'bg-gray-100 border border-gray-200'
         }`}>
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className={`w-4 h-4 ${
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <TrendingUp className={`w-3 h-3 ${
               progress.isReady
                 ? (theme === 'dark' ? 'text-green-400' : 'text-green-600')
                 : (theme === 'dark' ? 'text-blue-400' : 'text-blue-600')
             }`} />
-            <span className={`text-xs font-medium ${
+            <span className={`text-[10px] font-medium ${
               theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
             }`}>
               {progress.isReady ? 'Pronto para desconto!' : 'Progresso para próximo desconto'}
             </span>
           </div>
 
-          {/* Progress Bar */}
-          <div className={`w-full h-2 rounded-full overflow-hidden ${
+          {/* Progress Bar - Menor */}
+          <div className={`w-full h-1.5 rounded-full overflow-hidden ${
             theme === 'dark' ? 'bg-white/10' : 'bg-gray-300'
           }`}>
             <div
@@ -266,21 +264,21 @@ export default function CreditsDisplay() {
             />
           </div>
 
-          {/* Progress Info */}
-          <div className={`flex items-center justify-between mt-2 text-xs ${
+          {/* Progress Info - Menor */}
+          <div className={`flex items-center justify-between mt-1.5 text-[10px] ${
             theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
           }`}>
             <span>{progress.accumulatedTokens.toLocaleString('pt-BR')} tokens</span>
             <span className="font-medium">{progress.percentage}%</span>
           </div>
 
-          {/* Debug Buttons - only show if ready for deduction */}
+          {/* Debug Buttons - Compactos lado a lado */}
           {progress.isReady && (
-            <div className="mt-3 space-y-2">
+            <div className="mt-2 flex gap-1.5">
               <button
                 onClick={testDeduction}
                 disabled={debugLoading || cleanupLoading}
-                className={`w-full px-3 py-2 text-xs font-medium rounded-md transition-all ${
+                className={`flex-1 px-2 py-1 text-[10px] font-medium rounded transition-all ${
                   debugLoading || cleanupLoading
                     ? 'opacity-50 cursor-not-allowed'
                     : 'hover:opacity-80'
@@ -291,19 +289,19 @@ export default function CreditsDisplay() {
                 }`}
               >
                 {debugLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                  <span className="flex items-center justify-center gap-1">
+                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
                     Testando...
                   </span>
                 ) : (
-                  '🧪 Testar Dedução (Debug)'
+                  '🧪 Testar'
                 )}
               </button>
 
               <button
                 onClick={cleanupAccumulation}
                 disabled={debugLoading || cleanupLoading}
-                className={`w-full px-3 py-2 text-xs font-medium rounded-md transition-all ${
+                className={`flex-1 px-2 py-1 text-[10px] font-medium rounded transition-all ${
                   debugLoading || cleanupLoading
                     ? 'opacity-50 cursor-not-allowed'
                     : 'hover:opacity-80'
@@ -314,12 +312,12 @@ export default function CreditsDisplay() {
                 }`}
               >
                 {cleanupLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                  <span className="flex items-center justify-center gap-1">
+                    <Loader2 className="w-2.5 h-2.5 animate-spin" />
                     Limpando...
                   </span>
                 ) : (
-                  '🧹 Limpar Acumulação Presa'
+                  '🧹 Limpar'
                 )}
               </button>
             </div>
