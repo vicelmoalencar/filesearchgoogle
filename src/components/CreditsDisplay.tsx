@@ -43,17 +43,32 @@ export default function CreditsDisplay() {
 
       if (data.success) {
         console.log('✅ [TEST] Sucesso!');
-        console.log('   Resultado:', data.result);
+        console.log('   Resultado completo:', data.result);
+        console.log('\n═'.repeat(60));
+        console.log('🎯 [RESUMO DO TESTE]:');
+        console.log('═'.repeat(60));
+        console.log('   Saldo de créditos:', data.result.creditsBalance);
+        console.log('   Custo acumulado: R$', data.result.accumulatedCost?.toFixed(6));
+        console.log('   Créditos deduzidos:', data.result.creditsDeducted || 0);
+        console.log('   Sucesso:', data.result.success);
+        console.log('   Mensagem:', data.result.message);
 
-        // Atualizar créditos após teste
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
+        if (data.result.error) {
+          console.error('\n⚠️ [ERRO ENCONTRADO]:', data.result.error);
+        }
+        console.log('═'.repeat(60));
+
+        alert(`✅ Teste concluído!\n\nVeja os logs detalhados no console (F12).\n\nSaldo: ${data.result.creditsBalance}\nDeduzido: ${data.result.creditsDeducted || 0}\n\n${data.result.message || ''}\n\nNÃO vou recarregar a página automaticamente.\nVocê pode copiar os logs agora!`);
       } else {
         console.error('❌ [TEST] Falha:', data.error);
+        if (data.stack) {
+          console.error('Stack trace:', data.stack);
+        }
+        alert(`❌ Erro no teste:\n\n${data.error}\n\nVeja o console para mais detalhes.`);
       }
     } catch (error) {
       console.error('❌ [TEST] Erro ao chamar API:', error);
+      alert(`❌ Erro ao chamar API:\n\n${error}\n\nVeja o console para mais detalhes.`);
     } finally {
       setDebugLoading(false);
     }
