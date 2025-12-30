@@ -124,6 +124,12 @@ export default function ChatPage() {
             <div>
               <h1 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Chat CCT</h1>
               <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Desenvolvido por Ensino Plus</p>
+              {user?.email && (
+                <p className={`text-xs flex items-center gap-1 mt-0.5 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                  <User className="w-3 h-3" />
+                  <span className="font-mono">{user.email}</span>
+                </p>
+              )}
             </div>
           </div>
 
