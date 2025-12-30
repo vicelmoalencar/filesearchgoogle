@@ -256,12 +256,14 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
 
         try {
             console.log('🔄 [API PHP] Buscando saldo real...');
-            const phpUrl = `https://ensinoplus.com.br/autocalc/api/get_credits_by_email.php?email=${encodeURIComponent(userEmail)}`;
+            const phpUrl = 'https://ensinoplus.com.br/autocalc/api/get_credits_by_email.php';
             console.log(`   URL: ${phpUrl}`);
+            console.log(`   Email: ${userEmail}`);
 
             const phpResponse = await fetch(phpUrl, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: userEmail })
             });
 
             console.log(`   Status: ${phpResponse.status}`);
