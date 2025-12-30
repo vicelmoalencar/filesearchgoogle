@@ -316,6 +316,41 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
                 creditsRemaining: creditsBalance
             });
 
+            // 10. Sincronizar com API PHP (deduzir créditos reais)
+            try {
+                console.log(`[Creditos] Sincronizando ${creditsToDeduct} crédito(s) com API PHP...`);
+
+                const phpResponse = await fetch('https://ensinoplus.com.br/autocalc/api/deduct_credits_by_email.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: userEmail,
+                        credits: creditsToDeduct
+                    })
+                });
+
+                const phpData = await phpResponse.json();
+
+                if (phpData.success) {
+                    console.log(`[Creditos] ✅ Sincronizado com API PHP.`);
+                    console.log(`[Creditos]    Deduzido: ${phpData.credits_deducted} crédito(s)`);
+                    console.log(`[Creditos]    Saldo restante: ${phpData.credits_remaining}`);
+
+                    // Atualizar creditsBalance com o saldo real da API PHP
+                    if (phpData.credits_remaining !== undefined) {
+                        creditsBalance = phpData.credits_remaining;
+                    }
+                } else {
+                    console.error(`[Creditos] ⚠️ Erro ao sincronizar com API PHP:`, phpData.message);
+                    // Continua mesmo se falhar a sincronização
+                }
+            } catch (phpError) {
+                console.error('[Creditos] ⚠️ Erro ao chamar API PHP:', phpError);
+                // Continua mesmo se falhar a sincronização
+            }
+
             return {
                 success: true,
                 message: `${creditsToDeduct} crédito(s) deduzido(s)`,
