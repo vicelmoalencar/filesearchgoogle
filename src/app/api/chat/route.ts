@@ -5,7 +5,6 @@ import { FILE_SEARCH_STORE_NAME, MODEL_NAME } from "@/lib/gemini";
 import { getSystemPrompt } from "@/app/api/prompt/route";
 import { getApiKeyById } from "@/lib/api-keys-env";
 import { trackTokenUsage, estimateTokens } from "@/lib/usage-tracking";
-import { checkAndDeductCredits } from "@/lib/credit-checker";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -175,6 +174,7 @@ export async function POST(request: NextRequest) {
             console.log(`   Completion tokens: ${completionTokens}`);
             console.log(`   Total: ${totalTokens}`);
 
+            // trackTokenUsage JÁ chama checkAndDeductCredits internamente
             trackTokenUsage({
                 userId,
                 userEmail: userEmail || undefined,
@@ -190,20 +190,10 @@ export async function POST(request: NextRequest) {
                 durationMs,
                 status: 'success'
             }).then(() => {
-                console.log('✅ [CHAT] trackTokenUsage concluído');
+                console.log('✅ [CHAT] trackTokenUsage concluído (inclui verificação de créditos)');
             }).catch(err => {
                 console.error('❌ [CHAT] Failed to track usage:', err);
             });
-
-            // Verificar e deduzir créditos baseado em custo (não bloquear a resposta)
-            if (userId && userEmail) {
-                console.log('\n🔄 [CHAT] Chamando checkAndDeductCredits...');
-                checkAndDeductCredits(userId, userEmail).then(result => {
-                    console.log('✅ [CHAT] checkAndDeductCredits concluído:', result);
-                }).catch(err => {
-                    console.error('❌ [CHAT] Failed to check credits:', err);
-                });
-            }
         }
 
         return NextResponse.json({ response: text });
