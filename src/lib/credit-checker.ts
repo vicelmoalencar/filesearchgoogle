@@ -1,14 +1,10 @@
 /**
  * Credit checker logic - extracted to be reusable
  * Can be called directly without HTTP fetch
+ * Uses PostgreSQL for tracking data
  */
 
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { query } from './postgres';
 
 // Configuração: quanto em R$ equivale a 1 crédito
 const COST_PER_CREDIT = 0.10; // R$ 0,10 = 1 crédito
@@ -41,24 +37,24 @@ export async function checkAndDeductCredits(
         }
 
         // 1. Buscar total de custo acumulado desde a última dedução de crédito
-        const { data: usageData, error: usageError } = await supabase
-            .from('token_usage')
-            .select('estimated_cost, total_tokens')
-            .eq('user_id', userId)
-            .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Últimos 30 dias
-            .order('created_at', { ascending: false });
+        const usageResult = await query(
+            `SELECT estimated_cost, total_tokens
+             FROM token_usage
+             WHERE user_id = $1
+             AND created_at >= NOW() - INTERVAL '30 days'
+             ORDER BY created_at DESC`,
+            [userId]
+        );
 
-        if (usageError) {
-            console.error('[Credit Checker] Error fetching usage:', usageError);
-            return {
-                success: false,
-                error: usageError.message
-            };
-        }
+        const usageData = usageResult.rows;
 
         // 2. Calcular total de custo acumulado em R$
-        const totalCost = usageData?.reduce((sum, row) => sum + (parseFloat(row.estimated_cost) || 0), 0) || 0;
-        const totalTokens = usageData?.reduce((sum, row) => sum + (row.total_tokens || 0), 0) || 0;
+        const totalCost = usageData.reduce((sum: number, row: any) =>
+            sum + (parseFloat(row.estimated_cost) || 0), 0
+        );
+        const totalTokens = usageData.reduce((sum: number, row: any) =>
+            sum + (row.total_tokens || 0), 0
+        );
 
         // 3. Calcular quantos créditos devem ser deduzidos (1 crédito = R$ 0,10)
         const creditsToDeduct = Math.floor(totalCost / COST_PER_CREDIT);
@@ -86,18 +82,21 @@ export async function checkAndDeductCredits(
                 console.log(`[Credit Checker] ✅ Deducted ${creditsToDeduct} credits from ${userEmail}`);
                 console.log(`[Credit Checker] Remaining credits: ${result.credits_remaining}`);
 
-                // 5. Registrar a dedução de crédito no Supabase para não deduzir novamente
-                await supabase
-                    .from('credit_deductions')
-                    .insert({
-                        user_id: userId,
-                        user_email: userEmail,
-                        tokens_consumed: totalTokens,
-                        cost_accumulated: totalCost,
-                        credits_deducted: creditsToDeduct,
-                        credits_remaining: result.credits_remaining,
-                        deducted_at: new Date().toISOString()
-                    });
+                // 5. Registrar a dedução de crédito no PostgreSQL para não deduzir novamente
+                await query(
+                    `INSERT INTO credit_deductions (
+                        user_id, user_email, tokens_consumed, cost_accumulated,
+                        credits_deducted, credits_remaining
+                    ) VALUES ($1, $2, $3, $4, $5, $6)`,
+                    [
+                        userId,
+                        userEmail,
+                        totalTokens,
+                        totalCost,
+                        creditsToDeduct,
+                        result.credits_remaining
+                    ]
+                );
 
                 return {
                     success: true,

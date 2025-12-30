@@ -1,9 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { query } from './postgres';
 
 interface TokenUsageData {
   userId: string;
@@ -67,7 +62,7 @@ function estimateTokens(text: string): number {
 }
 
 /**
- * Registrar uso de tokens no Supabase
+ * Registrar uso de tokens no PostgreSQL
  */
 export async function trackTokenUsage(data: TokenUsageData): Promise<void> {
   try {
@@ -78,38 +73,40 @@ export async function trackTokenUsage(data: TokenUsageData): Promise<void> {
       data.completionTokens
     );
 
-    const { error } = await supabase
-      .from('token_usage')
-      .insert({
-        user_id: data.userId,
-        user_email: data.userEmail,
-        api_key_id: data.apiKeyId,
-        api_key_name: data.apiKeyName,
-        provider: data.provider,
-        model: data.model,
-        prompt_text: data.promptText?.substring(0, 5000), // Limitar tamanho
-        response_text: data.responseText?.substring(0, 5000),
-        prompt_tokens: data.promptTokens,
-        completion_tokens: data.completionTokens,
-        total_tokens: data.totalTokens,
-        estimated_cost: estimatedCost,
-        duration_ms: data.durationMs,
-        status: data.status || 'success',
-        error_message: data.errorMessage,
-      });
+    await query(
+      `INSERT INTO token_usage (
+        user_id, user_email, api_key_id, api_key_name,
+        provider, model, prompt_text, response_text,
+        prompt_tokens, completion_tokens, total_tokens,
+        estimated_cost, duration_ms, status, error_message
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+      [
+        data.userId,
+        data.userEmail,
+        data.apiKeyId,
+        data.apiKeyName,
+        data.provider,
+        data.model,
+        data.promptText?.substring(0, 5000), // Limitar tamanho
+        data.responseText?.substring(0, 5000),
+        data.promptTokens,
+        data.completionTokens,
+        data.totalTokens,
+        estimatedCost,
+        data.durationMs,
+        data.status || 'success',
+        data.errorMessage
+      ]
+    );
 
-    if (error) {
-      console.error('[Usage Tracking] Error saving to database:', error);
-    } else {
-      console.log('[Usage Tracking] ✅ Saved:', {
-        user: data.userEmail,
-        tokens: data.totalTokens,
-        cost: estimatedCost.toFixed(6),
-        model: data.model
-      });
-    }
+    console.log('[Usage Tracking] ✅ Saved to PostgreSQL:', {
+      user: data.userEmail,
+      tokens: data.totalTokens,
+      cost: estimatedCost.toFixed(6),
+      model: data.model
+    });
   } catch (error) {
-    console.error('[Usage Tracking] Exception:', error);
+    console.error('[Usage Tracking] Error saving to PostgreSQL:', error);
   }
 }
 
@@ -118,32 +115,27 @@ export async function trackTokenUsage(data: TokenUsageData): Promise<void> {
  */
 export async function getUserUsageStats(userId: string, days: number = 30) {
   try {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+    const result = await query(
+      `SELECT * FROM token_usage
+       WHERE user_id = $1
+       AND created_at >= NOW() - INTERVAL '${days} days'
+       ORDER BY created_at DESC`,
+      [userId]
+    );
 
-    const { data, error } = await supabase
-      .from('token_usage')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('created_at', startDate.toISOString())
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('[Usage Stats] Error:', error);
-      return null;
-    }
+    const data = result.rows;
 
     // Calcular totais
     const stats = {
       totalRequests: data.length,
-      totalTokens: data.reduce((sum, row) => sum + (row.total_tokens || 0), 0),
-      totalCost: data.reduce((sum, row) => sum + (parseFloat(row.estimated_cost) || 0), 0),
+      totalTokens: data.reduce((sum: number, row: any) => sum + (row.total_tokens || 0), 0),
+      totalCost: data.reduce((sum: number, row: any) => sum + (parseFloat(row.estimated_cost) || 0), 0),
       byModel: {} as Record<string, { requests: number; tokens: number; cost: number }>,
       byDay: {} as Record<string, { requests: number; tokens: number; cost: number }>,
     };
 
     // Agrupar por modelo
-    data.forEach(row => {
+    data.forEach((row: any) => {
       const model = row.model;
       if (!stats.byModel[model]) {
         stats.byModel[model] = { requests: 0, tokens: 0, cost: 0 };
@@ -153,7 +145,7 @@ export async function getUserUsageStats(userId: string, days: number = 30) {
       stats.byModel[model].cost += parseFloat(row.estimated_cost) || 0;
 
       // Agrupar por dia
-      const day = row.created_at.split('T')[0];
+      const day = row.created_at.toISOString().split('T')[0];
       if (!stats.byDay[day]) {
         stats.byDay[day] = { requests: 0, tokens: 0, cost: 0 };
       }
@@ -164,7 +156,7 @@ export async function getUserUsageStats(userId: string, days: number = 30) {
 
     return stats;
   } catch (error) {
-    console.error('[Usage Stats] Exception:', error);
+    console.error('[Usage Stats] Error:', error);
     return null;
   }
 }
