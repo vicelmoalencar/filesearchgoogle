@@ -342,12 +342,15 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
         const creditsToDeduct = Math.floor(accumulatedCost / COST_PER_CREDIT_BRL);
         const percentage = (accumulatedCost / COST_PER_CREDIT_BRL) * 100;
 
-        console.log(`📊 [ANÁLISE] Verificação de dedução:`);
+        console.log(`\n📊 [ANÁLISE] Verificação de dedução:`);
         console.log(`   Custo acumulado: R$ ${accumulatedCost.toFixed(6)}`);
         console.log(`   Custo por crédito: R$ ${COST_PER_CREDIT_BRL}`);
         console.log(`   Progresso: ${percentage.toFixed(1)}%`);
         console.log(`   Créditos a deduzir: ${creditsToDeduct}`);
         console.log(`   Tem accumulation ID: ${accumulationId ? 'SIM' : 'NÃO'}`);
+        console.log(`   Condição (creditsToDeduct > 0): ${creditsToDeduct > 0}`);
+        console.log(`   Condição (accumulationId): ${!!accumulationId}`);
+        console.log(`   Vai deduzir? ${creditsToDeduct > 0 && accumulationId ? 'SIM ✅' : 'NÃO ❌'}`);
 
         if (creditsToDeduct > 0 && accumulationId) {
             console.log(`\n💰 [DEDUÇÃO] Iniciando processo de dedução...`);

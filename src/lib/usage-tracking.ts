@@ -128,12 +128,23 @@ export async function trackTokenUsage(data: TokenUsageData): Promise<void> {
         });
 
         // 2. Verificar e deduzir créditos (se necessário)
+        console.log('\n🎯 [USAGE TRACKING] Chamando checkAndDeductCredits...');
+        console.log(`   Email: ${data.userEmail}`);
+
         const { checkAndDeductCredits: checkCentralized } = await import('./creditos-centralizados');
         const result = await checkCentralized(data.userEmail);
 
+        console.log('\n📋 [USAGE TRACKING] Resultado do checkAndDeductCredits:');
+        console.log(`   Success: ${result.success}`);
+        console.log(`   Message: ${result.message}`);
+        console.log(`   Credits Balance: ${result.creditsBalance}`);
+        console.log(`   Credits Deducted: ${result.creditsDeducted || 0}`);
+
         if (result.creditsDeducted) {
-          console.log(`[Creditos] ✅ Deduzido ${result.creditsDeducted} crédito(s) de ${data.userEmail}`);
+          console.log(`\n[Creditos] ✅ Deduzido ${result.creditsDeducted} crédito(s) de ${data.userEmail}`);
           console.log(`[Creditos] Saldo restante: ${result.creditsBalance}`);
+        } else {
+          console.log(`\n[Creditos] ℹ️ Nenhum crédito deduzido nesta vez`);
         }
       } catch (err) {
         console.error('[Usage Tracking] ❌ ERRO no sistema de créditos:', err);
