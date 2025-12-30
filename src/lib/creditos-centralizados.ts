@@ -406,17 +406,13 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
             );
             console.log(`✅ [POSTGRES] Dedução registrada`);
 
-            // 8. Marcar acumulação como deduzida
-            console.log(`🔄 [POSTGRES] Marcando acumulação como 'deducted'...`);
+            // 8. Deletar acumulação (já foi deduzida e registrada)
+            console.log(`🔄 [POSTGRES] Deletando acumulação processada...`);
             await client.query(
-                `UPDATE cost_accumulation
-                 SET status = 'deducted',
-                     deducted_at = CURRENT_TIMESTAMP,
-                     credits_deducted = $1
-                 WHERE id = $2`,
-                [creditsToDeduct, accumulationId]
+                `DELETE FROM cost_accumulation WHERE id = $1`,
+                [accumulationId]
             );
-            console.log(`✅ [POSTGRES] Acumulação marcada como deduzida`);
+            console.log(`✅ [POSTGRES] Acumulação deletada (dedução completa)`);
 
             // 9. Resetar acumulação
             accumulatedCost = 0;
