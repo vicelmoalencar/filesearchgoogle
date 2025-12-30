@@ -97,12 +97,20 @@ export interface CreditCheckResult {
  * Registrar uso de IA no sistema centralizado
  */
 export async function trackUsage(data: UsageData): Promise<void> {
+    console.log('\n📊 [TRACK USAGE] Iniciando...');
+    console.log(`   Email: ${data.userEmail}`);
+    console.log(`   Modelo: ${data.modelCode}`);
+    console.log(`   Input tokens: ${data.inputTokens.toLocaleString('pt-BR')}`);
+    console.log(`   Output tokens: ${data.outputTokens.toLocaleString('pt-BR')}`);
+    console.log(`   Total tokens: ${(data.inputTokens + data.outputTokens).toLocaleString('pt-BR')}`);
+
     const client = await creditosPool.connect();
 
     try {
         await client.query('BEGIN');
 
         // 1. Buscar platform_id
+        console.log('🔄 [TRACK] Buscando platform...');
         const platformResult = await client.query(
             'SELECT id FROM platforms WHERE platform_code = $1',
             [PLATFORM_CODE]
@@ -113,8 +121,10 @@ export async function trackUsage(data: UsageData): Promise<void> {
         }
 
         const platformId = platformResult.rows[0].id;
+        console.log(`✅ [TRACK] Platform ID: ${platformId}`);
 
         // 2. Buscar model_id e calcular custos
+        console.log('🔄 [TRACK] Buscando modelo...');
         const modelResult = await client.query(
             `SELECT id, cost_input_brl, cost_output_brl, cost_audio_brl
              FROM ai_models
@@ -127,6 +137,7 @@ export async function trackUsage(data: UsageData): Promise<void> {
         }
 
         const model = modelResult.rows[0];
+        console.log(`✅ [TRACK] Modelo encontrado: ID ${model.id}`);
 
         // 3. Calcular custos
         const costInputBrl = (data.inputTokens / 1_000_000) * parseFloat(model.cost_input_brl);
@@ -136,7 +147,13 @@ export async function trackUsage(data: UsageData): Promise<void> {
 
         const totalTokens = data.inputTokens + data.outputTokens + (data.audioTokens || 0);
 
+        console.log(`💵 [TRACK] Custos calculados:`);
+        console.log(`   Input: R$ ${costInputBrl.toFixed(6)}`);
+        console.log(`   Output: R$ ${costOutputBrl.toFixed(6)}`);
+        console.log(`   Total: R$ ${totalCostBrl.toFixed(6)}`);
+
         // 4. Inserir tracking de uso
+        console.log('🔄 [TRACK] Inserindo em usage_tracking...');
         await client.query(
             `INSERT INTO usage_tracking (
                 platform_id, user_email, model_id,
@@ -162,8 +179,10 @@ export async function trackUsage(data: UsageData): Promise<void> {
                 data.metadata ? JSON.stringify(data.metadata) : null
             ]
         );
+        console.log('✅ [TRACK] Uso registrado');
 
         // 5. Atualizar/criar acumulação de custos
+        console.log('🔄 [TRACK] Atualizando acumulação...');
         await client.query(
             `INSERT INTO cost_accumulation (user_email, platform_id, accumulated_cost_brl, accumulated_tokens, status)
              VALUES ($1, $2, $3, $4, 'accumulating')
@@ -174,6 +193,7 @@ export async function trackUsage(data: UsageData): Promise<void> {
                 updated_at = CURRENT_TIMESTAMP`,
             [data.userEmail, platformId, totalCostBrl, totalTokens]
         );
+        console.log(`✅ [TRACK] Acumulação atualizada (+R$ ${totalCostBrl.toFixed(6)})`);
 
         // 6. Garantir que o usuário existe em users_credits
         await client.query(
@@ -185,13 +205,12 @@ export async function trackUsage(data: UsageData): Promise<void> {
 
         await client.query('COMMIT');
 
-        console.log('[Creditos] ✅ Usage tracked:', {
-            user: data.userEmail,
-            platform: PLATFORM_CODE,
-            model: data.modelCode,
-            tokens: totalTokens,
-            cost: `R$ ${totalCostBrl.toFixed(6)}`
-        });
+        console.log('\n✅ [TRACK USAGE] Concluído com sucesso');
+        console.log(`   Usuário: ${data.userEmail}`);
+        console.log(`   Plataforma: ${PLATFORM_CODE}`);
+        console.log(`   Modelo: ${data.modelCode}`);
+        console.log(`   Tokens: ${totalTokens.toLocaleString('pt-BR')}`);
+        console.log(`   Custo: R$ ${totalCostBrl.toFixed(6)}`);
 
     } catch (error) {
         await client.query('ROLLBACK');
@@ -206,6 +225,9 @@ export async function trackUsage(data: UsageData): Promise<void> {
  * Verificar e deduzir créditos se necessário
  */
 export async function checkAndDeductCredits(userEmail: string): Promise<CreditCheckResult> {
+    console.log('\n🔍 [INICIO] checkAndDeductCredits');
+    console.log(`   Email: ${userEmail}`);
+
     const client = await creditosPool.connect();
 
     try {
@@ -214,6 +236,7 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
         // 0. Buscar configuração do custo por crédito
         const config = await getConfig();
         const COST_PER_CREDIT_BRL = config.costPerCredit;
+        console.log(`✅ [CONFIG] Custo por crédito: R$ ${COST_PER_CREDIT_BRL}`);
 
         // 1. Buscar platform_id
         const platformResult = await client.query(
@@ -226,23 +249,31 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
         }
 
         const platformId = platformResult.rows[0].id;
+        console.log(`✅ [PLATFORM] ID: ${platformId} (${PLATFORM_CODE})`);
 
         // 2. Buscar saldo REAL de créditos da API PHP
         let creditsBalance = 0;
 
         try {
-            const phpResponse = await fetch(`https://ensinoplus.com.br/autocalc/api/get_credits_by_email.php?email=${encodeURIComponent(userEmail)}`, {
+            console.log('🔄 [API PHP] Buscando saldo real...');
+            const phpUrl = `https://ensinoplus.com.br/autocalc/api/get_credits_by_email.php?email=${encodeURIComponent(userEmail)}`;
+            console.log(`   URL: ${phpUrl}`);
+
+            const phpResponse = await fetch(phpUrl, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
             });
 
+            console.log(`   Status: ${phpResponse.status}`);
             const phpData = await phpResponse.json();
+            console.log(`   Resposta:`, phpData);
 
             if (phpData.success && phpData.data?.credits !== undefined) {
                 creditsBalance = phpData.data.credits;
-                console.log(`[Creditos] Saldo real do MySQL: ${creditsBalance} créditos`);
+                console.log(`✅ [SALDO REAL] MySQL: ${creditsBalance} créditos`);
             } else {
-                console.warn(`[Creditos] ⚠️ Não foi possível obter saldo da API PHP, usando fallback`);
+                console.warn(`⚠️ [API PHP] Resposta inválida, usando fallback`);
+                console.warn(`   Data:`, phpData);
                 // Fallback: buscar do PostgreSQL (pode estar desatualizado)
                 const creditsResult = await client.query(
                     'SELECT credits_balance FROM users_credits WHERE user_email = $1',
@@ -251,10 +282,12 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
 
                 if (creditsResult.rows.length > 0) {
                     creditsBalance = creditsResult.rows[0].credits_balance;
+                    console.log(`⚠️ [FALLBACK] PostgreSQL: ${creditsBalance} créditos`);
                 }
             }
         } catch (phpError) {
-            console.error('[Creditos] ⚠️ Erro ao buscar saldo da API PHP:', phpError);
+            console.error('❌ [API PHP] Erro ao buscar saldo:', phpError);
+            console.error(`   Mensagem:`, phpError instanceof Error ? phpError.message : phpError);
             // Fallback: buscar do PostgreSQL (pode estar desatualizado)
             const creditsResult = await client.query(
                 'SELECT credits_balance FROM users_credits WHERE user_email = $1',
@@ -263,6 +296,7 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
 
             if (creditsResult.rows.length > 0) {
                 creditsBalance = creditsResult.rows[0].credits_balance;
+                console.log(`⚠️ [FALLBACK] PostgreSQL: ${creditsBalance} créditos`);
             }
         }
 
@@ -273,6 +307,7 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
         );
 
         // 3. Buscar custo acumulado
+        console.log('🔄 [ACUMULAÇÃO] Buscando custos acumulados...');
         const accumulationResult = await client.query(
             `SELECT id, accumulated_cost_brl, accumulated_tokens
              FROM cost_accumulation
@@ -289,19 +324,36 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
             accumulatedCost = parseFloat(acc.accumulated_cost_brl);
             accumulatedTokens = acc.accumulated_tokens;
             accumulationId = acc.id;
+            console.log(`✅ [ACUMULAÇÃO] Encontrada:`);
+            console.log(`   Custo: R$ ${accumulatedCost.toFixed(6)}`);
+            console.log(`   Tokens: ${accumulatedTokens.toLocaleString('pt-BR')}`);
+            console.log(`   ID: ${accumulationId}`);
+        } else {
+            console.log(`ℹ️ [ACUMULAÇÃO] Nenhuma acumulação ativa encontrada`);
         }
 
         // 4. Verificar se deve deduzir créditos
         const creditsToDeduct = Math.floor(accumulatedCost / COST_PER_CREDIT_BRL);
+        const percentage = (accumulatedCost / COST_PER_CREDIT_BRL) * 100;
+
+        console.log(`📊 [ANÁLISE] Verificação de dedução:`);
+        console.log(`   Custo acumulado: R$ ${accumulatedCost.toFixed(6)}`);
+        console.log(`   Custo por crédito: R$ ${COST_PER_CREDIT_BRL}`);
+        console.log(`   Progresso: ${percentage.toFixed(1)}%`);
+        console.log(`   Créditos a deduzir: ${creditsToDeduct}`);
+        console.log(`   Tem accumulation ID: ${accumulationId ? 'SIM' : 'NÃO'}`);
 
         if (creditsToDeduct > 0 && accumulationId) {
+            console.log(`\n💰 [DEDUÇÃO] Iniciando processo de dedução...`);
+
             // Verificar se o usuário tem saldo suficiente
             if (creditsBalance < creditsToDeduct) {
                 await client.query('COMMIT');
 
-                console.log(`[Creditos] ⚠️ Saldo insuficiente para dedução`);
-                console.log(`[Creditos]    Necessário: ${creditsToDeduct} créditos`);
-                console.log(`[Creditos]    Disponível: ${creditsBalance} créditos`);
+                console.log(`❌ [SALDO INSUFICIENTE] Não é possível deduzir`);
+                console.log(`   Necessário: ${creditsToDeduct} créditos`);
+                console.log(`   Disponível: ${creditsBalance} créditos`);
+                console.log(`   Faltam: ${creditsToDeduct - creditsBalance} créditos`);
 
                 return {
                     success: false,
@@ -315,10 +367,11 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
                 };
             }
 
-            console.log(`[Creditos] Deducting ${creditsToDeduct} credits from ${userEmail}`);
-            console.log(`[Creditos] Accumulated cost: R$ ${accumulatedCost.toFixed(4)}`);
+            console.log(`✅ [SALDO OK] Saldo suficiente: ${creditsBalance} >= ${creditsToDeduct}`);
+            console.log(`   Iniciando dedução de ${creditsToDeduct} crédito(s)...`);
 
-            // 5. Deduzir créditos
+            // 5. Deduzir créditos do PostgreSQL (apenas tracking)
+            console.log(`🔄 [POSTGRES] Atualizando users_credits...`);
             await client.query(
                 `UPDATE users_credits
                  SET credits_balance = credits_balance - $1,
@@ -328,11 +381,13 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
                  WHERE user_email = $2`,
                 [creditsToDeduct, userEmail]
             );
+            console.log(`✅ [POSTGRES] users_credits atualizado`);
 
             // 6. Atualizar saldo local
             creditsBalance -= creditsToDeduct;
 
             // 7. Registrar dedução
+            console.log(`🔄 [POSTGRES] Inserindo registro em credit_deductions...`);
             await client.query(
                 `INSERT INTO credit_deductions (
                     user_email, platform_id, cost_accumulated_brl, tokens_accumulated,
@@ -340,8 +395,10 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
                 ) VALUES ($1, $2, $3, $4, $5, $6)`,
                 [userEmail, platformId, accumulatedCost, accumulatedTokens, creditsToDeduct, creditsBalance]
             );
+            console.log(`✅ [POSTGRES] Dedução registrada`);
 
             // 8. Marcar acumulação como deduzida
+            console.log(`🔄 [POSTGRES] Marcando acumulação como 'deducted'...`);
             await client.query(
                 `UPDATE cost_accumulation
                  SET status = 'deducted',
@@ -350,51 +407,61 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
                  WHERE id = $2`,
                 [creditsToDeduct, accumulationId]
             );
+            console.log(`✅ [POSTGRES] Acumulação marcada como deduzida`);
 
             // 9. Resetar acumulação
             accumulatedCost = 0;
             accumulatedTokens = 0;
 
             await client.query('COMMIT');
+            console.log(`✅ [POSTGRES] COMMIT realizado com sucesso`);
 
-            console.log('[Creditos] ✅ Credits deducted:', {
-                user: userEmail,
-                creditsDeducted: creditsToDeduct,
-                creditsRemaining: creditsBalance
-            });
+            console.log(`\n✅ [DEDUÇÃO POSTGRES] Concluída:`);
+            console.log(`   Créditos deduzidos: ${creditsToDeduct}`);
+            console.log(`   Saldo restante (local): ${creditsBalance}`);
 
             // 10. Sincronizar com API PHP (deduzir créditos reais)
             try {
-                console.log(`[Creditos] Sincronizando ${creditsToDeduct} crédito(s) com API PHP...`);
+                console.log(`\n🔄 [API PHP] Sincronizando ${creditsToDeduct} crédito(s)...`);
 
-                const phpResponse = await fetch('https://ensinoplus.com.br/autocalc/api/deduct_credits_by_email.php', {
+                const phpUrl = 'https://ensinoplus.com.br/autocalc/api/deduct_credits_by_email.php';
+                const phpPayload = {
+                    email: userEmail,
+                    credits: creditsToDeduct
+                };
+
+                console.log(`   URL: ${phpUrl}`);
+                console.log(`   Payload:`, phpPayload);
+
+                const phpResponse = await fetch(phpUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        email: userEmail,
-                        credits: creditsToDeduct
-                    })
+                    body: JSON.stringify(phpPayload)
                 });
 
+                console.log(`   Status: ${phpResponse.status}`);
                 const phpData = await phpResponse.json();
+                console.log(`   Resposta:`, phpData);
 
                 if (phpData.success) {
-                    console.log(`[Creditos] ✅ Sincronizado com API PHP.`);
-                    console.log(`[Creditos]    Deduzido: ${phpData.credits_deducted} crédito(s)`);
-                    console.log(`[Creditos]    Saldo restante: ${phpData.credits_remaining}`);
+                    console.log(`✅ [API PHP] Sincronizado com sucesso!`);
+                    console.log(`   Deduzido: ${phpData.credits_deducted} crédito(s)`);
+                    console.log(`   Saldo restante (MySQL): ${phpData.credits_remaining}`);
 
                     // Atualizar creditsBalance com o saldo real da API PHP
                     if (phpData.credits_remaining !== undefined) {
                         creditsBalance = phpData.credits_remaining;
                     }
                 } else {
-                    console.error(`[Creditos] ⚠️ Erro ao sincronizar com API PHP:`, phpData.message);
+                    console.error(`❌ [API PHP] Erro na resposta:`, phpData.message);
+                    console.error(`   Data completo:`, phpData);
                     // Continua mesmo se falhar a sincronização
                 }
             } catch (phpError) {
-                console.error('[Creditos] ⚠️ Erro ao chamar API PHP:', phpError);
+                console.error('❌ [API PHP] Erro ao chamar:', phpError);
+                console.error(`   Mensagem:`, phpError instanceof Error ? phpError.message : phpError);
                 // Continua mesmo se falhar a sincronização
             }
 
@@ -414,6 +481,11 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
 
         // Calcular quanto falta para próxima dedução
         const costUntilNextDeduction = COST_PER_CREDIT_BRL - (accumulatedCost % COST_PER_CREDIT_BRL);
+
+        console.log(`\nℹ️ [SEM DEDUÇÃO] Ainda não atingiu o limite`);
+        console.log(`   Custo acumulado: R$ ${accumulatedCost.toFixed(6)}`);
+        console.log(`   Falta: R$ ${costUntilNextDeduction.toFixed(6)}`);
+        console.log(`   Progresso: ${((accumulatedCost / COST_PER_CREDIT_BRL) * 100).toFixed(1)}%`);
 
         return {
             success: true,
