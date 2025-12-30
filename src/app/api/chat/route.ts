@@ -168,6 +168,13 @@ export async function POST(request: NextRequest) {
         if (userId) {
             const keyData = apiKeyId ? getApiKeyById(apiKeyId) : null;
 
+            console.log('\n🎯 [CHAT] Rastreando uso de tokens...');
+            console.log(`   User: ${userEmail}`);
+            console.log(`   Model: ${MODEL_NAME}`);
+            console.log(`   Prompt tokens: ${promptTokens}`);
+            console.log(`   Completion tokens: ${completionTokens}`);
+            console.log(`   Total: ${totalTokens}`);
+
             trackTokenUsage({
                 userId,
                 userEmail: userEmail || undefined,
@@ -182,14 +189,19 @@ export async function POST(request: NextRequest) {
                 totalTokens,
                 durationMs,
                 status: 'success'
+            }).then(() => {
+                console.log('✅ [CHAT] trackTokenUsage concluído');
             }).catch(err => {
-                console.error('[Chat] Failed to track usage:', err);
+                console.error('❌ [CHAT] Failed to track usage:', err);
             });
 
             // Verificar e deduzir créditos baseado em custo (não bloquear a resposta)
             if (userId && userEmail) {
-                checkAndDeductCredits(userId, userEmail).catch(err => {
-                    console.error('[Chat] Failed to check credits:', err);
+                console.log('\n🔄 [CHAT] Chamando checkAndDeductCredits...');
+                checkAndDeductCredits(userId, userEmail).then(result => {
+                    console.log('✅ [CHAT] checkAndDeductCredits concluído:', result);
+                }).catch(err => {
+                    console.error('❌ [CHAT] Failed to check credits:', err);
                 });
             }
         }

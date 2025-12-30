@@ -21,6 +21,43 @@ export default function CreditsDisplay() {
   const [progress, setProgress] = useState<CreditsProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [debugLoading, setDebugLoading] = useState(false);
+
+  // Função de debug para testar dedução manualmente
+  const testDeduction = async () => {
+    if (!user?.email) return;
+
+    setDebugLoading(true);
+    console.log('\n🧪 [TEST] Testando dedução manual...');
+    console.log(`   Email: ${user.email}`);
+
+    try {
+      const response = await fetch('/api/credits-debug', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email })
+      });
+
+      const data = await response.json();
+      console.log('\n📊 [TEST] Resultado da API:', data);
+
+      if (data.success) {
+        console.log('✅ [TEST] Sucesso!');
+        console.log('   Resultado:', data.result);
+
+        // Atualizar créditos após teste
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        console.error('❌ [TEST] Falha:', data.error);
+      }
+    } catch (error) {
+      console.error('❌ [TEST] Erro ao chamar API:', error);
+    } finally {
+      setDebugLoading(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchCredits() {
@@ -54,6 +91,7 @@ export default function CreditsDisplay() {
 
         // Buscar progresso de acumulação
         try {
+          console.log('🔄 [CREDITS UI] Buscando progresso de acumulação...');
           const progressResponse = await fetch('/api/credits-progress', {
             method: 'POST',
             headers: {
@@ -62,13 +100,23 @@ export default function CreditsDisplay() {
             body: JSON.stringify({ email: user.email })
           });
 
+          console.log(`   Status: ${progressResponse.status}`);
           const progressData = await progressResponse.json();
+          console.log('   Resposta:', progressData);
 
           if (progressData.success) {
             setProgress(progressData);
+            console.log('✅ [CREDITS UI] Progresso atualizado:', {
+              percentage: progressData.percentage,
+              accumulatedCost: progressData.accumulatedCost,
+              tokens: progressData.accumulatedTokens,
+              isReady: progressData.isReady
+            });
+          } else {
+            console.warn('⚠️ [CREDITS UI] Resposta sem sucesso:', progressData);
           }
         } catch (progressErr) {
-          console.error('Error fetching progress:', progressErr);
+          console.error('❌ [CREDITS UI] Erro ao buscar progresso:', progressErr);
           // Não mostrar erro de progresso para o usuário, apenas log
         }
       } catch (err) {
@@ -179,6 +227,32 @@ export default function CreditsDisplay() {
             <span>{progress.accumulatedTokens.toLocaleString('pt-BR')} tokens</span>
             <span className="font-medium">{progress.percentage}%</span>
           </div>
+
+          {/* Debug Button - only show if ready for deduction */}
+          {progress.isReady && (
+            <button
+              onClick={testDeduction}
+              disabled={debugLoading}
+              className={`mt-3 w-full px-3 py-2 text-xs font-medium rounded-md transition-all ${
+                debugLoading
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:opacity-80'
+              } ${
+                theme === 'dark'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-green-500 text-white'
+              }`}
+            >
+              {debugLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Testando...
+                </span>
+              ) : (
+                '🧪 Testar Dedução (Debug)'
+              )}
+            </button>
+          )}
         </div>
       )}
     </div>
