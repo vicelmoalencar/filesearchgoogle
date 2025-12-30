@@ -1,4 +1,5 @@
 import { query } from './postgres';
+import { trackUsage as trackCreditosUsage } from './creditos-centralizados';
 
 interface TokenUsageData {
   userId: string;
@@ -105,6 +106,27 @@ export async function trackTokenUsage(data: TokenUsageData): Promise<void> {
       cost: estimatedCost.toFixed(6),
       model: data.model
     });
+
+    // Também enviar para o sistema centralizado de créditos
+    if (data.userEmail) {
+      trackCreditosUsage({
+        userEmail: data.userEmail,
+        modelCode: data.model,
+        inputTokens: data.promptTokens,
+        outputTokens: data.completionTokens,
+        audioTokens: 0,
+        requestDurationMs: data.durationMs,
+        status: data.status || 'success',
+        errorMessage: data.errorMessage,
+        metadata: {
+          apiKeyId: data.apiKeyId,
+          apiKeyName: data.apiKeyName,
+          provider: data.provider
+        }
+      }).catch(err => {
+        console.error('[Usage Tracking] Error saving to Creditos:', err);
+      });
+    }
   } catch (error) {
     console.error('[Usage Tracking] Error saving to PostgreSQL:', error);
   }
