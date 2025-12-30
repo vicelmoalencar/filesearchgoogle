@@ -15,7 +15,7 @@ async function diagnosticar() {
         max: 5,
     });
 
-    const email = 'antoniovicelmo@gmail.com'; // Altere para seu email
+    const email = 'antoniovicelmo.alencar@gmail.com'; // Email do Supabase
 
     console.log('🔍 DIAGNÓSTICO DO SISTEMA DE DEDUÇÃO DE CRÉDITOS\n');
     console.log('═'.repeat(60));
