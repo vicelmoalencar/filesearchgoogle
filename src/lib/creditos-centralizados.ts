@@ -8,9 +8,12 @@
 import { Pool } from 'pg';
 
 // Pool de conexões para o banco Creditos_Ensinoplus
+// Converter formato Python (postgresql+psycopg2://) para Node.js (postgresql://)
+const connectionString = process.env.DATABASE_URL_CREDITOS?.replace('postgresql+psycopg2://', 'postgresql://');
+
 const creditosPool = new Pool({
-    connectionString: process.env.DATABASE_URL_CREDITOS,
-    ssl: process.env.DATABASE_URL_CREDITOS?.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
+    connectionString: connectionString,
+    ssl: connectionString?.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
     max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
