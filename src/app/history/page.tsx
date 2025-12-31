@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/components/AuthContext';
-import { useTheme } from '@/components/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Search, Filter, ChevronLeft, ChevronRight, Calendar, Bot, User, DollarSign, MessageSquare } from 'lucide-react';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import { supabase } from '@/lib/supabase';
 
 interface ChatHistoryItem {
   id: number;
@@ -78,9 +79,12 @@ function HistoryPage() {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
 
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
+
       const response = await fetch(`/api/chat-history?${params}`, {
         headers: {
-          'Authorization': `Bearer ${(await user.getSession()).access_token}`
+          'Authorization': `Bearer ${authToken}`
         }
       });
 
