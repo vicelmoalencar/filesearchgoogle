@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import pool from '@/lib/postgres';
+import { Pool } from 'pg';
+
+// Pool de conexões para o banco Creditos_Ensinoplus (onde está usage_tracking)
+const connectionString = process.env.DATABASE_URL_CREDITOS?.replace('postgresql+psycopg2://', 'postgresql://');
+const creditosPool = new Pool({
+  connectionString: connectionString,
+  ssl: connectionString?.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+});
 
 export async function GET(request: NextRequest) {
   try {
     // Autenticação
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
+      console.log('[Chat History] No authorization header');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -14,8 +25,11 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
+      console.log('[Chat History] Auth error:', authError);
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    console.log('[Chat History] User authenticated:', user.email);
 
     // Parâmetros de busca e paginação
     const searchParams = request.nextUrl.searchParams;
@@ -59,6 +73,8 @@ export async function GET(request: NextRequest) {
 
     const whereClause = whereConditions.join(' AND ');
 
+    console.log('[Chat History] Query params:', { whereClause, queryParams, page, limit });
+
     // Buscar total de registros
     const countQuery = `
       SELECT COUNT(*) as total
@@ -66,8 +82,10 @@ export async function GET(request: NextRequest) {
       WHERE ${whereClause}
     `;
 
-    const countResult = await pool.query(countQuery, queryParams);
+    console.log('[Chat History] Executing count query...');
+    const countResult = await creditosPool.query(countQuery, queryParams);
     const total = parseInt(countResult.rows[0].total);
+    console.log('[Chat History] Total records found:', total);
 
     // Buscar registros paginados
     const dataQuery = `
@@ -96,7 +114,7 @@ export async function GET(request: NextRequest) {
     `;
 
     queryParams.push(limit, offset);
-    const dataResult = await pool.query(dataQuery, queryParams);
+    const dataResult = await creditosPool.query(dataQuery, queryParams);
 
     // Buscar modelos disponíveis para filtro
     const modelsQuery = `
@@ -105,7 +123,7 @@ export async function GET(request: NextRequest) {
       WHERE user_id = $1
       ORDER BY model
     `;
-    const modelsResult = await pool.query(modelsQuery, [user.email]);
+    const modelsResult = await creditosPool.query(modelsQuery, [user.email]);
     const availableModels = modelsResult.rows.map((row: any) => row.model);
 
     return NextResponse.json({
@@ -127,9 +145,14 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Error fetching chat history:', error);
+    console.error('[Chat History] Error fetching chat history:', error);
+    console.error('[Chat History] Error stack:', error.stack);
     return NextResponse.json(
-      { error: 'Failed to fetch chat history', details: error.message },
+      {
+        error: 'Failed to fetch chat history',
+        details: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     );
   }
