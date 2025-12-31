@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Search, Filter, ChevronLeft, ChevronRight, Calendar, Bot, User, DollarSign, MessageSquare } from 'lucide-react';
+import { Search, Filter, ChevronLeft, ChevronRight, Calendar, Bot, User as UserIcon, DollarSign, MessageSquare } from 'lucide-react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { supabase } from '@/lib/supabase';
 
@@ -299,9 +299,10 @@ function HistoryPage() {
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Data/Hora</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Modelo</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Plataforma</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Pergunta</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Resposta</th>
                     <th className="px-4 py-3 text-right text-sm font-semibold">Tokens</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold">Custo Total</th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold">Custo</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
@@ -310,34 +311,48 @@ function HistoryPage() {
                       key={item.id}
                       className={`${
                         theme === 'dark' ? 'hover:bg-gray-750' : 'hover:bg-gray-50'
-                      } transition-colors`}
+                      } transition-colors cursor-pointer`}
+                      onClick={() => setExpandedItem(expandedItem === item.id ? null : item.id)}
                     >
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-4 py-3 text-sm whitespace-nowrap">
                         {formatDate(item.created_at)}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          theme === 'dark' ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {item.model || 'N/A'}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={`px-2 py-1 rounded text-xs inline-block ${
+                            theme === 'dark' ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {item.model || 'N/A'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {item.platform || 'N/A'}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className="text-gray-500">
-                          {item.metadata?.apiKeyName || `Platform ${item.platform_id || 'N/A'}`}
-                        </span>
+                      <td className="px-4 py-3 text-sm max-w-md">
+                        <div className="flex items-start gap-2">
+                          <UserIcon className="w-4 h-4 mt-1 flex-shrink-0 text-gray-400" />
+                          <span className={expandedItem === item.id ? 'whitespace-pre-wrap' : 'line-clamp-2'}>
+                            {item.prompt || 'N/A'}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-right">
+                      <td className="px-4 py-3 text-sm max-w-md">
+                        <div className="flex items-start gap-2">
+                          <Bot className="w-4 h-4 mt-1 flex-shrink-0 text-gray-400" />
+                          <span className={expandedItem === item.id ? 'whitespace-pre-wrap' : 'line-clamp-2'}>
+                            {expandedItem === item.id ? item.response : (item.response?.substring(0, 100) + (item.response && item.response.length > 100 ? '...' : '')) || 'N/A'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
                         <div className="text-xs">
                           <div className="text-gray-500">In: {item.input_tokens.toLocaleString()}</div>
                           <div className="text-gray-500">Out: {item.output_tokens.toLocaleString()}</div>
-                          {item.audio_input_tokens > 0 && (
-                            <div className="text-gray-500">Audio: {item.audio_input_tokens.toLocaleString()}</div>
-                          )}
                           <div className="font-semibold mt-1">Total: {item.total_tokens.toLocaleString()}</div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-right font-semibold">
+                      <td className="px-4 py-3 text-sm text-right font-semibold whitespace-nowrap">
                         {formatCost(item.total_cost_brl)}
                       </td>
                     </tr>

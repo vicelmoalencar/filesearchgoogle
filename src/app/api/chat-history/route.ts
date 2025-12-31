@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { Pool } from 'pg';
-
-// Pool de conexões para o banco Creditos_Ensinoplus (onde está usage_tracking)
-const connectionString = process.env.DATABASE_URL_CREDITOS?.replace('postgresql+psycopg2://', 'postgresql://');
-const creditosPool = new Pool({
-  connectionString: connectionString,
-  ssl: connectionString?.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
-});
+import pool from '@/lib/postgres';
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,32 +33,32 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // Construir query com filtros
-    let whereConditions = ['ut.user_email = $1'];
+    let whereConditions = ['user_email = $1'];
     const queryParams: any[] = [user.email];
     let paramCounter = 2;
 
     if (search) {
-      // Buscar no metadata (que pode conter apiKeyName) ou no nome do modelo
-      whereConditions.push(`(ut.metadata::text ILIKE $${paramCounter} OR am.model_name ILIKE $${paramCounter})`);
+      // Buscar em prompt_text, response_text ou model
+      whereConditions.push(`(prompt_text ILIKE $${paramCounter} OR response_text ILIKE $${paramCounter} OR model ILIKE $${paramCounter})`);
       queryParams.push(`%${search}%`);
       paramCounter++;
     }
 
     if (model) {
-      // Filtrar por nome do modelo
-      whereConditions.push(`am.model_name = $${paramCounter}`);
+      // Filtrar por modelo
+      whereConditions.push(`model = $${paramCounter}`);
       queryParams.push(model);
       paramCounter++;
     }
 
     if (startDate) {
-      whereConditions.push(`ut.created_at >= $${paramCounter}`);
+      whereConditions.push(`created_at >= $${paramCounter}`);
       queryParams.push(startDate);
       paramCounter++;
     }
 
     if (endDate) {
-      whereConditions.push(`ut.created_at <= $${paramCounter}`);
+      whereConditions.push(`created_at <= $${paramCounter}`);
       queryParams.push(endDate + ' 23:59:59');
       paramCounter++;
     }
@@ -80,57 +70,52 @@ export async function GET(request: NextRequest) {
     // Buscar total de registros
     const countQuery = `
       SELECT COUNT(*) as total
-      FROM usage_tracking ut
-      LEFT JOIN ai_models am ON ut.model_id = am.id
+      FROM token_usage
       WHERE ${whereClause}
     `;
 
     console.log('[Chat History] Executing count query...');
-    const countResult = await creditosPool.query(countQuery, queryParams);
+    const countResult = await pool.query(countQuery, queryParams);
     const total = parseInt(countResult.rows[0].total);
     console.log('[Chat History] Total records found:', total);
 
-    // Buscar registros paginados com JOIN para pegar nome do modelo
+    // Buscar registros paginados
     const dataQuery = `
       SELECT
-        ut.id,
-        ut.user_email as user_id,
-        ut.platform_id,
-        am.model_name as model,
-        am.provider,
-        '' as prompt,
-        '' as response,
-        ut.input_tokens,
-        ut.output_tokens,
-        COALESCE(ut.audio_tokens, 0) as audio_input_tokens,
+        id,
+        user_email as user_id,
+        api_key_name as platform,
+        model,
+        prompt_text as prompt,
+        response_text as response,
+        prompt_tokens as input_tokens,
+        completion_tokens as output_tokens,
+        0 as audio_input_tokens,
         0 as audio_output_tokens,
-        ut.total_tokens,
-        ut.cost_input_brl as input_cost_brl,
-        ut.cost_output_brl as output_cost_brl,
-        COALESCE(ut.cost_audio_brl, 0) as audio_input_cost_brl,
+        total_tokens,
+        estimated_cost as input_cost_brl,
+        0 as output_cost_brl,
+        0 as audio_input_cost_brl,
         0 as audio_output_cost_brl,
-        ut.total_cost_brl,
-        ut.created_at,
-        ut.metadata
-      FROM usage_tracking ut
-      LEFT JOIN ai_models am ON ut.model_id = am.id
+        estimated_cost as total_cost_brl,
+        created_at
+      FROM token_usage
       WHERE ${whereClause}
-      ORDER BY ut.created_at DESC
+      ORDER BY created_at DESC
       LIMIT $${paramCounter} OFFSET $${paramCounter + 1}
     `;
 
     queryParams.push(limit, offset);
-    const dataResult = await creditosPool.query(dataQuery, queryParams);
+    const dataResult = await pool.query(dataQuery, queryParams);
 
     // Buscar modelos disponíveis para filtro
     const modelsQuery = `
-      SELECT DISTINCT am.model_name as model
-      FROM usage_tracking ut
-      LEFT JOIN ai_models am ON ut.model_id = am.id
-      WHERE ut.user_email = $1 AND am.model_name IS NOT NULL
+      SELECT DISTINCT model
+      FROM token_usage
+      WHERE user_email = $1 AND model IS NOT NULL
       ORDER BY model
     `;
-    const modelsResult = await creditosPool.query(modelsQuery, [user.email]);
+    const modelsResult = await pool.query(modelsQuery, [user.email]);
     const availableModels = modelsResult.rows.map((row: any) => row.model).filter(Boolean);
 
     return NextResponse.json({
