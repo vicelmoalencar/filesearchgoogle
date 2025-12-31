@@ -39,24 +39,12 @@ export async function POST(request: NextRequest) {
         // Buscar configuração do custo por crédito
         const COST_PER_CREDIT = await getCostPerCredit();
 
-        // Buscar platform_id do Chat CCT
-        const platformResult = await pool.query(
-            'SELECT id FROM platforms WHERE platform_code = $1',
-            ['chat_cct']
-        );
-
-        if (platformResult.rows.length === 0) {
-            return NextResponse.json({ error: 'Platform not found' }, { status: 404 });
-        }
-
-        const platformId = platformResult.rows[0].id;
-
-        // Buscar acumulação atual do usuário
+        // Buscar acumulação GLOBAL do usuário (independente de plataforma)
         const accumulationResult = await pool.query(
             `SELECT accumulated_cost_brl, accumulated_tokens
              FROM cost_accumulation
-             WHERE user_email = $1 AND platform_id = $2 AND status = 'accumulating'`,
-            [email, platformId]
+             WHERE user_email = $1 AND platform_id IS NULL AND status = 'accumulating'`,
+            [email]
         );
 
         let accumulatedCost = 0;

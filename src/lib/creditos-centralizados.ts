@@ -181,19 +181,37 @@ export async function trackUsage(data: UsageData): Promise<void> {
         );
         console.log('✅ [TRACK] Uso registrado');
 
-        // 5. Atualizar/criar acumulação de custos
-        console.log('🔄 [TRACK] Atualizando acumulação...');
-        await client.query(
-            `INSERT INTO cost_accumulation (user_email, platform_id, accumulated_cost_brl, accumulated_tokens, status)
-             VALUES ($1, $2, $3, $4, 'accumulating')
-             ON CONFLICT (user_email, platform_id, status)
-             DO UPDATE SET
-                accumulated_cost_brl = cost_accumulation.accumulated_cost_brl + $3,
-                accumulated_tokens = cost_accumulation.accumulated_tokens + $4,
-                updated_at = CURRENT_TIMESTAMP`,
-            [data.userEmail, platformId, totalCostBrl, totalTokens]
+        // 5. Atualizar/criar acumulação de custos (GLOBAL por usuário, independente de plataforma)
+        console.log('🔄 [TRACK] Atualizando acumulação global...');
+
+        // Usar UPSERT manual pois ON CONFLICT com partial index requer sintaxe especial
+        const existingAccumulation = await client.query(
+            `SELECT id, accumulated_cost_brl, accumulated_tokens
+             FROM cost_accumulation
+             WHERE user_email = $1 AND platform_id IS NULL AND status = 'accumulating'`,
+            [data.userEmail]
         );
-        console.log(`✅ [TRACK] Acumulação atualizada (+R$ ${totalCostBrl.toFixed(6)})`);
+
+        if (existingAccumulation.rows.length > 0) {
+            // Atualizar existente
+            await client.query(
+                `UPDATE cost_accumulation
+                 SET accumulated_cost_brl = accumulated_cost_brl + $1,
+                     accumulated_tokens = accumulated_tokens + $2,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE user_email = $3 AND platform_id IS NULL AND status = 'accumulating'`,
+                [totalCostBrl, totalTokens, data.userEmail]
+            );
+        } else {
+            // Inserir novo
+            await client.query(
+                `INSERT INTO cost_accumulation (user_email, platform_id, accumulated_cost_brl, accumulated_tokens, status)
+                 VALUES ($1, NULL, $2, $3, 'accumulating')`,
+                [data.userEmail, totalCostBrl, totalTokens]
+            );
+        }
+
+        console.log(`✅ [TRACK] Acumulação global atualizada (+R$ ${totalCostBrl.toFixed(6)})`);
 
         // 6. Garantir que o usuário existe em users_credits
         await client.query(
@@ -312,13 +330,13 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
             [userEmail, creditsBalance]
         );
 
-        // 3. Buscar custo acumulado
-        console.log('🔄 [ACUMULAÇÃO] Buscando custos acumulados...');
+        // 3. Buscar custo acumulado (GLOBAL por usuário, independente de plataforma)
+        console.log('🔄 [ACUMULAÇÃO] Buscando custos acumulados globalmente...');
         const accumulationResult = await client.query(
             `SELECT id, accumulated_cost_brl, accumulated_tokens
              FROM cost_accumulation
-             WHERE user_email = $1 AND platform_id = $2 AND status = 'accumulating'`,
-            [userEmail, platformId]
+             WHERE user_email = $1 AND platform_id IS NULL AND status = 'accumulating'`,
+            [userEmail]
         );
 
         let accumulatedCost = 0;
