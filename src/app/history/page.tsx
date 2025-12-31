@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Search, Filter, ChevronLeft, ChevronRight, Calendar, Bot, User as UserIcon, DollarSign, MessageSquare } from 'lucide-react';
+import { Search, Filter, ChevronLeft, ChevronRight, Calendar, Bot, User as UserIcon, MessageSquare } from 'lucide-react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { supabase } from '@/lib/supabase';
 
@@ -128,13 +128,6 @@ function HistoryPage() {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
-    });
-  };
-
-  const formatCost = (cost: string) => {
-    return parseFloat(cost).toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
     });
   };
 
@@ -296,7 +289,6 @@ function HistoryPage() {
                     <th className="px-4 py-3 text-left text-sm font-semibold">Pergunta</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Resposta</th>
                     <th className="px-4 py-3 text-right text-sm font-semibold">Tokens</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold">Custo</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
@@ -345,9 +337,6 @@ function HistoryPage() {
                           <div className="text-gray-500">Out: {item.output_tokens.toLocaleString()}</div>
                           <div className="font-semibold mt-1">Total: {item.total_tokens.toLocaleString()}</div>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right font-semibold whitespace-nowrap">
-                        {formatCost(item.total_cost_brl)}
                       </td>
                     </tr>
                   ))}
@@ -404,38 +393,22 @@ function HistoryPage() {
           </div>
         )}
 
-        {/* Resumo de custos */}
+        {/* Resumo de tokens */}
         {items.length > 0 && (
           <div className={`mt-6 p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
             <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-              <DollarSign className="w-5 h-5" />
+              <MessageSquare className="w-5 h-5" />
               Resumo da Página Atual
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-500">Total de Registros</p>
                 <p className="text-2xl font-bold">{items.length}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Total de Tokens</p>
-                <p className="text-2xl font-bold">
-                  {items.reduce((acc, item) => acc + item.total_tokens, 0).toLocaleString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Custo Total</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatCost(
-                    items.reduce((acc, item) => acc + parseFloat(item.total_cost_brl), 0).toFixed(6)
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Custo Médio</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {formatCost(
-                    (items.reduce((acc, item) => acc + parseFloat(item.total_cost_brl), 0) / items.length).toFixed(6)
-                  )}
+                  {items.reduce((acc, item) => acc + item.total_tokens, 0).toLocaleString()}
                 </p>
               </div>
             </div>
