@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Coins, Loader2, AlertCircle } from 'lucide-react';
+import { Coins, Loader2, AlertCircle, Info } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import CreditUsageModal from './CreditUsageModal';
 
 interface CreditsProgress {
   accumulatedCost: number;
@@ -21,6 +22,7 @@ export default function CreditsDisplay() {
   const [progress, setProgress] = useState<CreditsProgress | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     async function fetchCredits() {
@@ -126,42 +128,59 @@ export default function CreditsDisplay() {
   if (credits === null) return null;
 
   return (
-    <div className={`flex flex-col px-3 py-1.5 rounded-lg transition-all ${
-      theme === 'dark'
-        ? 'bg-white/5 text-gray-300 border border-white/10'
-        : 'bg-gray-100 text-gray-700 border border-gray-200'
-    }`}>
-      {/* Credits Display */}
-      <div className="flex items-center gap-2">
-        <div className={`p-1.5 rounded-md ${
-          theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'
-        }`}>
-          <Coins className={`w-4 h-4 ${
-            theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'
-          }`} />
-        </div>
+    <>
+      <CreditUsageModal isOpen={showModal} onClose={() => setShowModal(false)} />
 
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-lg font-bold">{credits}</span>
-          <span className="text-xs opacity-70">créditos</span>
-        </div>
-      </div>
+      <div className={`flex flex-col px-3 py-1.5 rounded-lg transition-all ${
+        theme === 'dark'
+          ? 'bg-white/5 text-gray-300 border border-white/10'
+          : 'bg-gray-100 text-gray-700 border border-gray-200'
+      }`}>
+        {/* Credits Display */}
+        <div className="flex items-center gap-2">
+          <div className={`p-1.5 rounded-md ${
+            theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'
+          }`}>
+            <Coins className={`w-4 h-4 ${
+              theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'
+            }`} />
+          </div>
 
-      {/* Progress Bar - Fina abaixo dos créditos */}
-      {progress && progress.percentage > 0 && (
-        <div className={`w-full h-1 rounded-full overflow-hidden mt-2 ${
-          theme === 'dark' ? 'bg-white/10' : 'bg-gray-300'
-        }`}>
-          <div
-            className={`h-full transition-all duration-500 ${
-              progress.isReady
-                ? 'bg-gradient-to-r from-green-500 to-green-400'
-                : 'bg-gradient-to-r from-blue-500 to-blue-400'
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-lg font-bold">{credits}</span>
+            <span className="text-xs opacity-70">créditos</span>
+          </div>
+
+          {/* Info Button */}
+          <button
+            onClick={() => setShowModal(true)}
+            className={`ml-auto p-1 rounded-md transition-colors ${
+              theme === 'dark'
+                ? 'hover:bg-white/10 text-gray-400 hover:text-gray-200'
+                : 'hover:bg-gray-200 text-gray-500 hover:text-gray-700'
             }`}
-            style={{ width: `${Math.min(progress.percentage, 100)}%` }}
-          />
+            title="Como os créditos são consumidos"
+          >
+            <Info className="w-4 h-4" />
+          </button>
         </div>
-      )}
-    </div>
+
+        {/* Progress Bar - Fina abaixo dos créditos */}
+        {progress && progress.percentage > 0 && (
+          <div className={`w-full h-1 rounded-full overflow-hidden mt-2 ${
+            theme === 'dark' ? 'bg-white/10' : 'bg-gray-300'
+          }`}>
+            <div
+              className={`h-full transition-all duration-500 ${
+                progress.isReady
+                  ? 'bg-gradient-to-r from-green-500 to-green-400'
+                  : 'bg-gradient-to-r from-blue-500 to-blue-400'
+              }`}
+              style={{ width: `${Math.min(progress.percentage, 100)}%` }}
+            />
+          </div>
+        )}
+      </div>
+    </>
   );
 }
