@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase';
 interface ChatHistoryItem {
   id: number;
   user_id: string;
-  platform: string;
+  platform_id?: number;
   model: string;
   prompt: string;
   response: string;
@@ -25,6 +25,7 @@ interface ChatHistoryItem {
   audio_output_cost_brl: string;
   total_cost_brl: string;
   created_at: string;
+  metadata?: any;
 }
 
 interface Pagination {
@@ -298,10 +299,9 @@ function HistoryPage() {
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Data/Hora</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Modelo</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Pergunta</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Resposta</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Plataforma</th>
                     <th className="px-4 py-3 text-right text-sm font-semibold">Tokens</th>
-                    <th className="px-4 py-3 text-right text-sm font-semibold">Custo</th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold">Custo Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
@@ -310,8 +310,7 @@ function HistoryPage() {
                       key={item.id}
                       className={`${
                         theme === 'dark' ? 'hover:bg-gray-750' : 'hover:bg-gray-50'
-                      } transition-colors cursor-pointer`}
-                      onClick={() => setExpandedItem(expandedItem === item.id ? null : item.id)}
+                      } transition-colors`}
                     >
                       <td className="px-4 py-3 text-sm">
                         {formatDate(item.created_at)}
@@ -320,29 +319,21 @@ function HistoryPage() {
                         <span className={`px-2 py-1 rounded text-xs ${
                           theme === 'dark' ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'
                         }`}>
-                          {item.model}
+                          {item.model || 'N/A'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        <div className="flex items-start gap-2">
-                          <User className="w-4 h-4 mt-1 flex-shrink-0 text-gray-400" />
-                          <span className={expandedItem === item.id ? '' : 'line-clamp-2'}>
-                            {expandedItem === item.id ? item.prompt : truncateText(item.prompt, 80)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        <div className="flex items-start gap-2">
-                          <Bot className="w-4 h-4 mt-1 flex-shrink-0 text-gray-400" />
-                          <span className={expandedItem === item.id ? '' : 'line-clamp-2'}>
-                            {expandedItem === item.id ? item.response : truncateText(item.response, 80)}
-                          </span>
-                        </div>
+                        <span className="text-gray-500">
+                          {item.metadata?.apiKeyName || `Platform ${item.platform_id || 'N/A'}`}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-right">
-                        <div className="text-xs text-gray-500">
-                          <div>In: {item.input_tokens.toLocaleString()}</div>
-                          <div>Out: {item.output_tokens.toLocaleString()}</div>
+                        <div className="text-xs">
+                          <div className="text-gray-500">In: {item.input_tokens.toLocaleString()}</div>
+                          <div className="text-gray-500">Out: {item.output_tokens.toLocaleString()}</div>
+                          {item.audio_input_tokens > 0 && (
+                            <div className="text-gray-500">Audio: {item.audio_input_tokens.toLocaleString()}</div>
+                          )}
                           <div className="font-semibold mt-1">Total: {item.total_tokens.toLocaleString()}</div>
                         </div>
                       </td>

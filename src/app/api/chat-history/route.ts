@@ -43,30 +43,32 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // Construir query com filtros
-    let whereConditions = ['user_id = $1'];
+    let whereConditions = ['ut.user_email = $1'];
     const queryParams: any[] = [user.email];
     let paramCounter = 2;
 
     if (search) {
-      whereConditions.push(`(prompt ILIKE $${paramCounter} OR response ILIKE $${paramCounter})`);
+      // Buscar no metadata (que pode conter apiKeyName) ou no nome do modelo
+      whereConditions.push(`(ut.metadata::text ILIKE $${paramCounter} OR am.model_name ILIKE $${paramCounter})`);
       queryParams.push(`%${search}%`);
       paramCounter++;
     }
 
     if (model) {
-      whereConditions.push(`model = $${paramCounter}`);
+      // Filtrar por nome do modelo
+      whereConditions.push(`am.model_name = $${paramCounter}`);
       queryParams.push(model);
       paramCounter++;
     }
 
     if (startDate) {
-      whereConditions.push(`created_at >= $${paramCounter}`);
+      whereConditions.push(`ut.created_at >= $${paramCounter}`);
       queryParams.push(startDate);
       paramCounter++;
     }
 
     if (endDate) {
-      whereConditions.push(`created_at <= $${paramCounter}`);
+      whereConditions.push(`ut.created_at <= $${paramCounter}`);
       queryParams.push(endDate + ' 23:59:59');
       paramCounter++;
     }
@@ -78,7 +80,8 @@ export async function GET(request: NextRequest) {
     // Buscar total de registros
     const countQuery = `
       SELECT COUNT(*) as total
-      FROM usage_tracking
+      FROM usage_tracking ut
+      LEFT JOIN ai_models am ON ut.model_id = am.id
       WHERE ${whereClause}
     `;
 
@@ -87,29 +90,32 @@ export async function GET(request: NextRequest) {
     const total = parseInt(countResult.rows[0].total);
     console.log('[Chat History] Total records found:', total);
 
-    // Buscar registros paginados
+    // Buscar registros paginados com JOIN para pegar nome do modelo
     const dataQuery = `
       SELECT
-        id,
-        user_id,
-        platform,
-        model,
-        prompt,
-        response,
-        input_tokens,
-        output_tokens,
-        audio_input_tokens,
-        audio_output_tokens,
-        total_tokens,
-        input_cost_brl,
-        output_cost_brl,
-        audio_input_cost_brl,
-        audio_output_cost_brl,
-        total_cost_brl,
-        created_at
-      FROM usage_tracking
+        ut.id,
+        ut.user_email as user_id,
+        ut.platform_id,
+        am.model_name as model,
+        am.provider,
+        '' as prompt,
+        '' as response,
+        ut.input_tokens,
+        ut.output_tokens,
+        COALESCE(ut.audio_tokens, 0) as audio_input_tokens,
+        0 as audio_output_tokens,
+        ut.total_tokens,
+        ut.cost_input_brl as input_cost_brl,
+        ut.cost_output_brl as output_cost_brl,
+        COALESCE(ut.cost_audio_brl, 0) as audio_input_cost_brl,
+        0 as audio_output_cost_brl,
+        ut.total_cost_brl,
+        ut.created_at,
+        ut.metadata
+      FROM usage_tracking ut
+      LEFT JOIN ai_models am ON ut.model_id = am.id
       WHERE ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY ut.created_at DESC
       LIMIT $${paramCounter} OFFSET $${paramCounter + 1}
     `;
 
@@ -118,13 +124,14 @@ export async function GET(request: NextRequest) {
 
     // Buscar modelos disponíveis para filtro
     const modelsQuery = `
-      SELECT DISTINCT model
-      FROM usage_tracking
-      WHERE user_id = $1
+      SELECT DISTINCT am.model_name as model
+      FROM usage_tracking ut
+      LEFT JOIN ai_models am ON ut.model_id = am.id
+      WHERE ut.user_email = $1 AND am.model_name IS NOT NULL
       ORDER BY model
     `;
     const modelsResult = await creditosPool.query(modelsQuery, [user.email]);
-    const availableModels = modelsResult.rows.map((row: any) => row.model);
+    const availableModels = modelsResult.rows.map((row: any) => row.model).filter(Boolean);
 
     return NextResponse.json({
       success: true,
