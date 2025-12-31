@@ -413,28 +413,50 @@ export async function checkAndDeductCredits(userEmail: string): Promise<CreditCh
             // 6. Atualizar saldo local
             creditsBalance -= creditsToDeduct;
 
-            // 7. Registrar dedução
+            // 7. Calcular excesso (sobra que deve continuar acumulada)
+            const costUsedForDeduction = creditsToDeduct * COST_PER_CREDIT_BRL;
+            const remainingCost = accumulatedCost - costUsedForDeduction;
+
+            console.log(`💰 [CÁLCULO] Processando excesso:`);
+            console.log(`   Custo total acumulado: R$ ${accumulatedCost.toFixed(6)}`);
+            console.log(`   Custo usado (${creditsToDeduct} crédito(s)): R$ ${costUsedForDeduction.toFixed(6)}`);
+            console.log(`   Excesso que continua acumulado: R$ ${remainingCost.toFixed(6)}`);
+
+            // 8. Registrar dedução
             console.log(`🔄 [POSTGRES] Inserindo registro em credit_deductions...`);
             await client.query(
                 `INSERT INTO credit_deductions (
                     user_email, platform_id, cost_accumulated_brl, tokens_accumulated,
                     credits_deducted, credits_remaining
                 ) VALUES ($1, $2, $3, $4, $5, $6)`,
-                [userEmail, platformId, accumulatedCost, accumulatedTokens, creditsToDeduct, creditsBalance]
+                [userEmail, platformId, costUsedForDeduction, accumulatedTokens, creditsToDeduct, creditsBalance]
             );
             console.log(`✅ [POSTGRES] Dedução registrada`);
 
-            // 8. Deletar acumulação (já foi deduzida e registrada)
-            console.log(`🔄 [POSTGRES] Deletando acumulação processada...`);
-            await client.query(
-                `DELETE FROM cost_accumulation WHERE id = $1`,
-                [accumulationId]
-            );
-            console.log(`✅ [POSTGRES] Acumulação deletada (dedução completa)`);
-
-            // 9. Resetar acumulação
-            accumulatedCost = 0;
-            accumulatedTokens = 0;
+            // 9. Atualizar acumulação com o EXCESSO (não deletar!)
+            if (remainingCost > 0.000001) { // Usar threshold para evitar problemas de float
+                console.log(`🔄 [POSTGRES] Atualizando acumulação com excesso...`);
+                await client.query(
+                    `UPDATE cost_accumulation
+                     SET accumulated_cost_brl = $1,
+                         accumulated_tokens = 0,
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = $2`,
+                    [remainingCost, accumulationId]
+                );
+                console.log(`✅ [POSTGRES] Acumulação atualizada com excesso de R$ ${remainingCost.toFixed(6)}`);
+                accumulatedCost = remainingCost;
+                accumulatedTokens = 0;
+            } else {
+                console.log(`🔄 [POSTGRES] Deletando acumulação (sem excesso)...`);
+                await client.query(
+                    `DELETE FROM cost_accumulation WHERE id = $1`,
+                    [accumulationId]
+                );
+                console.log(`✅ [POSTGRES] Acumulação deletada`);
+                accumulatedCost = 0;
+                accumulatedTokens = 0;
+            }
 
             await client.query('COMMIT');
             console.log(`✅ [POSTGRES] COMMIT realizado com sucesso`);
