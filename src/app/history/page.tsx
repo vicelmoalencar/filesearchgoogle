@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase';
 interface ChatHistoryItem {
   id: number;
   user_id: string;
-  platform_id?: number;
+  platform?: string;
   model: string;
   prompt: string;
   response: string;
@@ -25,7 +25,6 @@ interface ChatHistoryItem {
   audio_output_cost_brl: string;
   total_cost_brl: string;
   created_at: string;
-  metadata?: any;
 }
 
 interface Pagination {
@@ -137,11 +136,6 @@ function HistoryPage() {
       style: 'currency',
       currency: 'BRL'
     });
-  };
-
-  const truncateText = (text: string, maxLength: number = 100) => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
   };
 
   return (
