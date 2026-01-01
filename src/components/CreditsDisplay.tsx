@@ -165,19 +165,36 @@ export default function CreditsDisplay() {
           </button>
         </div>
 
-        {/* Progress Bar - Fina abaixo dos créditos */}
+        {/* Progress Bar - Com percentual à esquerda */}
         {progress && progress.percentage > 0 && (
-          <div className={`w-full h-1 rounded-full overflow-hidden mt-2 ${
-            theme === 'dark' ? 'bg-white/10' : 'bg-gray-300'
-          }`}>
-            <div
-              className={`h-full transition-all duration-500 ${
+          <div className="flex items-center gap-2 mt-2">
+            {/* Indicador circular e percentual */}
+            <div className="flex items-center gap-1.5 min-w-[60px]">
+              <div className={`w-2 h-2 rounded-full ${
                 progress.isReady
-                  ? 'bg-gradient-to-r from-green-500 to-green-400'
-                  : 'bg-gradient-to-r from-blue-500 to-blue-400'
-              }`}
-              style={{ width: `${Math.min(progress.percentage, 100)}%` }}
-            />
+                  ? 'bg-green-500'
+                  : 'bg-blue-500'
+              }`} />
+              <span className={`text-sm font-semibold ${
+                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+              }`}>
+                {progress.percentage.toFixed(1)}%
+              </span>
+            </div>
+
+            {/* Barra de progresso */}
+            <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${
+              theme === 'dark' ? 'bg-white/10' : 'bg-gray-300'
+            }`}>
+              <div
+                className={`h-full transition-all duration-500 ${
+                  progress.isReady
+                    ? 'bg-gradient-to-r from-green-500 to-green-400'
+                    : 'bg-gradient-to-r from-blue-500 to-blue-400'
+                }`}
+                style={{ width: `${Math.min(progress.percentage, 100)}%` }}
+              />
+            </div>
           </div>
         )}
       </div>
