@@ -126,8 +126,9 @@ export async function POST(request: NextRequest) {
                 theme: keyData?.theme,
                 hasCustomPrompt: !!keyData?.customPrompt,
                 promptLength: keyData?.customPrompt?.length || 0,
-                customPromptTrimmed: keyData?.customPrompt?.trim() || ''
+                customPromptPreview: keyData?.customPrompt?.substring(0, 100) || 'NONE'
             });
+            console.log('[Chat] Full customPrompt value:', keyData?.customPrompt);
 
             if (keyData && keyData.customPrompt && keyData.customPrompt.trim()) {
                 systemInstruction = keyData.customPrompt;
