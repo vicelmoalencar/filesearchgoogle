@@ -149,6 +149,11 @@ export async function POST(request: NextRequest) {
             { role: 'user', parts: [{ text: message }] } // Mensagem atual do usuário
         ];
 
+        console.log('\n🚀 [GEMINI API CALL]');
+        console.log('Model:', MODEL_NAME);
+        console.log('System Instruction being sent to API:', systemInstruction.substring(0, 200) + '...');
+        console.log('System Instruction length:', systemInstruction.length);
+
         // Generate content with File Search Tool (RAG) e histórico de contexto
         const response = await genAIClient.models.generateContent({
             model: MODEL_NAME,
@@ -162,6 +167,8 @@ export async function POST(request: NextRequest) {
                 }]
             }
         });
+
+        console.log('✅ [GEMINI API RESPONSE] Received\n');
 
         const text = response.text || "";
         const durationMs = Date.now() - startTime;
