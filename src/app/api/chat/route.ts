@@ -113,27 +113,35 @@ export async function POST(request: NextRequest) {
         // Get dynamic system prompt - verifica se a chave tem prompt customizado
         let systemInstruction = getSystemPrompt();
 
+        console.log('\n=== PROMPT DEBUG START ===');
         console.log(`[Chat] API Key ID received: ${apiKeyId || 'none'}`);
+        console.log(`[Chat] Default system prompt length: ${systemInstruction.length}`);
+        console.log(`[Chat] Default prompt preview: ${systemInstruction.substring(0, 150)}...`);
 
         if (apiKeyId) {
             const keyData = getApiKeyById(apiKeyId);
-            console.log(`[Chat] Key Data found:`, {
+            console.log(`\n[Chat] Key Data found:`, {
                 id: keyData?.id,
                 name: keyData?.name,
+                theme: keyData?.theme,
                 hasCustomPrompt: !!keyData?.customPrompt,
-                promptLength: keyData?.customPrompt?.length || 0
+                promptLength: keyData?.customPrompt?.length || 0,
+                customPromptTrimmed: keyData?.customPrompt?.trim() || ''
             });
 
             if (keyData && keyData.customPrompt && keyData.customPrompt.trim()) {
                 systemInstruction = keyData.customPrompt;
-                console.log(`[Chat] ✅ Using custom prompt for key: ${keyData.name}`);
-                console.log(`[Chat] Prompt preview: ${systemInstruction.substring(0, 100)}...`);
+                console.log(`\n[Chat] ✅ Using custom prompt for key: ${keyData.name}`);
+                console.log(`[Chat] Custom prompt length: ${systemInstruction.length}`);
+                console.log(`[Chat] Custom prompt preview: ${systemInstruction.substring(0, 150)}...`);
             } else {
-                console.log(`[Chat] ⚠️ No custom prompt found, using default system prompt`);
+                console.log(`\n[Chat] ⚠️ No custom prompt found, using default system prompt`);
+                console.log(`[Chat] Reason: ${!keyData ? 'Key not found' : !keyData.customPrompt ? 'customPrompt is undefined/null' : 'customPrompt is empty after trim'}`);
             }
         } else {
-            console.log(`[Chat] ⚠️ No apiKeyId provided, using default system prompt`);
+            console.log(`\n[Chat] ⚠️ No apiKeyId provided, using default system prompt`);
         }
+        console.log('=== PROMPT DEBUG END ===\n');
 
         // Construir array de contents com histórico + mensagem atual
         const contents = [

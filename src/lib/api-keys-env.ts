@@ -26,6 +26,11 @@ export function readApiKeys(): ApiKey[] {
 
   // Ler prompts customizados do arquivo
   const keyPrompts = readKeyPrompts();
+  console.log('[API Keys] Loaded custom prompts from file:', Object.keys(keyPrompts).map(k => ({
+    keyId: k,
+    promptLength: keyPrompts[k]?.length || 0,
+    preview: keyPrompts[k]?.substring(0, 50) + '...'
+  })));
 
   // Chave padrão do .env (se existir)
   const defaultKey = process.env.GEMINI_API_KEY;
