@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Coins, Loader2, AlertCircle, Info } from 'lucide-react';
+import { Coins, Loader2, AlertCircle, Info, Plus } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import CreditUsageModal from './CreditUsageModal';
 
@@ -151,10 +151,25 @@ export default function CreditsDisplay() {
             <span className="text-xs opacity-70">créditos</span>
           </div>
 
+          {/* Add Credits Button */}
+          <a
+            href="https://ensinoplus.com.br/autocalc/pix_calcmachine/cobranca_qrcode.php"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`p-1.5 rounded-md transition-colors ${
+              theme === 'dark'
+                ? 'bg-green-600 hover:bg-green-500 text-white'
+                : 'bg-green-500 hover:bg-green-600 text-white'
+            }`}
+            title="Adicionar créditos"
+          >
+            <Plus className="w-4 h-4" />
+          </a>
+
           {/* Info Button */}
           <button
             onClick={() => setShowModal(true)}
-            className={`ml-auto p-1 rounded-md transition-colors ${
+            className={`p-1 rounded-md transition-colors ${
               theme === 'dark'
                 ? 'hover:bg-white/10 text-gray-400 hover:text-gray-200'
                 : 'hover:bg-gray-200 text-gray-500 hover:text-gray-700'
