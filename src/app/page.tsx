@@ -2,7 +2,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Paperclip, Sparkles, Sun, Moon, LogOut, BarChart3, History } from "lucide-react";
+import { Send, Bot, User, Paperclip, Sun, Moon, LogOut, BarChart3, History } from "lucide-react";
+import Image from "next/image";
 import MessageContent from "@/components/MessageContent";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -118,8 +119,14 @@ export default function ChatPage() {
       <header className={`flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 py-4 mb-4 border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-300'}`}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full lg:w-auto">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-blue-500 to-purple-500">
-              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+            <div className="relative w-10 h-10 sm:w-12 sm:h-12">
+              <Image
+                src="/logochat.png"
+                alt="Chat CCT Logo"
+                fill
+                className="object-contain"
+                priority
+              />
             </div>
             <div>
               <h1 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Chat CCT</h1>

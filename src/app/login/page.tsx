@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Sparkles, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -30,8 +31,16 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-tr from-blue-500 to-purple-500 mb-4">
-            <Sparkles className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center mb-4">
+            <div className="relative w-16 h-16">
+              <Image
+                src="/logochat.png"
+                alt="Chat CCT Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Chat CCT</h1>
           <p className="text-gray-400">Faça login para continuar</p>
