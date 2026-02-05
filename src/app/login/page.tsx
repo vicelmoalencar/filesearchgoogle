@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -11,7 +12,35 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { signIn } = useAuth();
+  const [checkingSession, setCheckingSession] = useState(true);
+  const { signIn, user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
+  // Verifica se já está logado (via cookie do domínio ensinoplus)
+  useEffect(() => {
+    if (!authLoading) {
+      if (user) {
+        // Usuário já logado, redireciona para home
+        console.log('🔐 [LOGIN] Usuário já autenticado via cookie, redirecionando...');
+        router.push('/');
+      } else {
+        // Não está logado, mostra o formulário
+        setCheckingSession(false);
+      }
+    }
+  }, [user, authLoading, router]);
+
+  // Mostra loading enquanto verifica sessão
+  if (checkingSession || authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Verificando sessão...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
