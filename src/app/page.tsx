@@ -115,7 +115,30 @@ export default function ChatPage() {
 
   return (
     <ProtectedRoute>
-      <div className="flex flex-col h-screen max-w-7xl mx-auto p-3 sm:p-4 md:p-6">
+      {/* Barra Superior com Logo Suite Plus */}
+      <div className="w-full py-4 bg-gray-900 border-b border-gray-700 fixed top-0 left-0 right-0 z-50">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 flex justify-center">
+          <a
+            href="https://suite.ensinoplus.com.br"
+            title="Voltar para Suite Plus"
+            className="hover:opacity-80 transition-opacity"
+          >
+            <Image
+              src="/assets/logo_suite.png"
+              alt="Suite Plus"
+              width={280}
+              height={80}
+              className="h-16 sm:h-20 w-auto"
+              priority
+            />
+          </a>
+        </div>
+      </div>
+
+      {/* Espaçador para compensar a barra fixa */}
+      <div className="h-24 sm:h-28" />
+
+      <div className="flex flex-col h-[calc(100vh-6rem)] sm:h-[calc(100vh-7rem)] max-w-7xl mx-auto p-3 sm:p-4 md:p-6">
       <header className={`flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 py-4 mb-4 border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-300'}`}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full lg:w-auto">
           <div className="flex items-center gap-3">
