@@ -123,13 +123,11 @@ export default function ChatPage() {
             title="Voltar para Suite Plus"
             className="hover:opacity-80 transition-opacity"
           >
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/assets/logo_suite.png"
               alt="Suite Plus"
-              width={280}
-              height={80}
               className="h-16 sm:h-20 w-auto"
-              priority
             />
           </a>
         </div>
