@@ -119,7 +119,7 @@ export default function ChatPage() {
       <div className="w-full py-4 bg-gray-900 border-b border-gray-700 fixed top-0 left-0 right-0 z-50">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 flex justify-center">
           <a
-            href="https://suite.ensinoplus.com.br"
+            href="https://suiteplus.ensinoplus.com.br"
             title="Voltar para Suite Plus"
             className="hover:opacity-80 transition-opacity"
           >
