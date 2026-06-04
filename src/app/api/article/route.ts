@@ -79,37 +79,33 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Selecione pelo menos uma fonte." }, { status: 400 });
         }
 
-        // Usa a chave da primeira fonte selecionada para autenticar o cliente Gemini
-        const primaryKeyData = getApiKeyById(keyIds[0]);
-        const apiKey = primaryKeyData?.apiKey || process.env.GEMINI_API_KEY;
-
-        if (!apiKey) {
-            return NextResponse.json({ error: "Nenhuma chave API configurada" }, { status: 500 });
-        }
-
-        const genAIClient = new GoogleGenAI({ apiKey });
-
-        // Listar todos os stores acessíveis com esta chave
-        const storesIterator = await genAIClient.fileSearchStores.list();
-        const allStores: any[] = [];
-        for await (const store of storesIterator) {
-            allStores.push(store);
-        }
-
-        // Coletar os stores de todas as fontes selecionadas
+        // Coleta os stores de cada chave selecionada usando o cliente de cada chave
         const selectedStoreNames: string[] = [];
+
         for (const keyId of keyIds) {
-            const keyData = getApiKeyById(keyId);
-            const suffix = keyData && keyData.id !== 'default'
-                ? `_${keyData.theme.replace(/\s+/g, '_')}`
-                : '';
-            const displayName = FILE_SEARCH_STORE_NAME + suffix;
-            const found = allStores.find((s: any) => s.displayName === displayName);
-            if (found?.name) {
-                selectedStoreNames.push(found.name);
-                console.log(`[Article] Store encontrado: ${displayName}`);
-            } else {
-                console.warn(`[Article] Store não encontrado: ${displayName}`);
+            try {
+                const keyData = getApiKeyById(keyId);
+                const currentApiKey = keyData?.apiKey || process.env.GEMINI_API_KEY;
+                if (!currentApiKey) continue;
+
+                const client = new GoogleGenAI({ apiKey: currentApiKey });
+                const suffix = keyData && keyData.id !== 'default'
+                    ? `_${keyData.theme.replace(/\s+/g, '_')}`
+                    : '';
+                const displayName = FILE_SEARCH_STORE_NAME + suffix;
+
+                const iter = await client.fileSearchStores.list();
+                for await (const store of iter) {
+                    if (store.displayName === displayName && store.name) {
+                        if (!selectedStoreNames.includes(store.name as string)) {
+                            selectedStoreNames.push(store.name as string);
+                            console.log(`[Article] Store adicionado: ${displayName}`);
+                        }
+                        break;
+                    }
+                }
+            } catch (err) {
+                console.warn(`[Article] Erro ao buscar store para keyId ${keyId}:`, err instanceof Error ? err.message : err);
             }
         }
 
@@ -119,7 +115,15 @@ export async function POST(request: NextRequest) {
             }, { status: 404 });
         }
 
-        console.log(`[Article] Usando ${selectedStoreNames.length} store(s) para geração`);
+        // API Gemini suporta múltiplos stores apenas quando na mesma conta.
+        // Usa o cliente da primeira chave selecionada para a geração.
+        const primaryApiKey = getApiKeyById(keyIds[0])?.apiKey || process.env.GEMINI_API_KEY;
+        if (!primaryApiKey) {
+            return NextResponse.json({ error: "Nenhuma chave API configurada" }, { status: 500 });
+        }
+        const genAIClient = new GoogleGenAI({ apiKey: primaryApiKey });
+
+        console.log(`[Article] Gerando com ${selectedStoreNames.length} store(s)`);
 
         const toneMap: Record<string, string> = {
             informativo: "tom informativo e claro, acessível ao público geral",
