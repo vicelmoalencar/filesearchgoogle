@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { FILE_SEARCH_STORE_NAME, MODEL_NAME } from "@/lib/gemini";
 import { getApiKeyById } from "@/lib/api-keys-env";
-import { supabase } from "@/lib/supabase";
+import { getServerUser } from "@/lib/supabase-server";
 import { trackUsage, checkAndDeductCredits } from "@/lib/creditos-centralizados";
 
 function estimateTokens(text: string): number {
@@ -30,25 +30,16 @@ export async function POST(request: NextRequest) {
     const startTime = Date.now();
     let userEmail: string | null = null;
 
-    // Diagnóstico de variáveis de ambiente
     console.log('[Article] DATABASE_URL_CREDITOS configurado:', !!process.env.DATABASE_URL_CREDITOS);
 
     try {
-        // Obter usuário autenticado
-        const authHeader = request.headers.get('authorization');
-        console.log('[Article] Auth header presente:', !!authHeader);
-
-        if (authHeader) {
-            const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-            if (authError) console.error('[Article] Erro ao obter usuário:', authError.message);
-            if (user) {
-                userEmail = user.email || null;
-                console.log('[Article] userEmail obtido:', userEmail);
-            } else {
-                console.warn('[Article] Usuário não encontrado no token');
-            }
+        // Obter usuário autenticado via cookies (SSR)
+        const user = await getServerUser();
+        if (user) {
+            userEmail = user.email || null;
+            console.log('[Article] userEmail obtido via cookie:', userEmail);
         } else {
-            console.warn('[Article] Nenhum Authorization header — créditos não serão deduzidos');
+            console.warn('[Article] Usuário não encontrado nos cookies — créditos não serão deduzidos');
         }
 
         const { topic, tone, length, structure, apiKeyId } = await request.json();

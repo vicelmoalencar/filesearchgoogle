@@ -8,7 +8,6 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import CreditsDisplay from "@/components/CreditsDisplay";
-import { supabase } from "@/lib/supabase";
 
 interface Message {
   role: "user" | "model";
@@ -65,15 +64,9 @@ export default function ChatPage() {
     setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const authToken = session?.access_token;
-
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(authToken && { "Authorization": `Bearer ${authToken}` })
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: userMessage,
           history: messages.map(m => ({
