@@ -115,15 +115,21 @@ export async function POST(request: NextRequest) {
             }, { status: 404 });
         }
 
-        // API Gemini suporta múltiplos stores apenas quando na mesma conta.
-        // Usa o cliente da primeira chave selecionada para a geração.
+        // A API Gemini aceita no máximo 5 stores por requisição
+        const MAX_STORES = 5;
+        const limitedStoreNames = selectedStoreNames.slice(0, MAX_STORES);
+        if (selectedStoreNames.length > MAX_STORES) {
+            console.warn(`[Article] ${selectedStoreNames.length} stores selecionados, limitando aos primeiros ${MAX_STORES}`);
+        }
+
+        // Usa o cliente da primeira chave selecionada para a geração
         const primaryApiKey = getApiKeyById(keyIds[0])?.apiKey || process.env.GEMINI_API_KEY;
         if (!primaryApiKey) {
             return NextResponse.json({ error: "Nenhuma chave API configurada" }, { status: 500 });
         }
         const genAIClient = new GoogleGenAI({ apiKey: primaryApiKey });
 
-        console.log(`[Article] Gerando com ${selectedStoreNames.length} store(s)`);
+        console.log(`[Article] Gerando com ${limitedStoreNames.length} store(s) (de ${selectedStoreNames.length} selecionados)`);
 
         const toneMap: Record<string, string> = {
             informativo: "tom informativo e claro, acessível ao público geral",
@@ -163,7 +169,7 @@ IMPORTANTE: Baseie-se EXCLUSIVAMENTE nos documentos disponíveis via File Search
                 systemInstruction: ARTICLE_SYSTEM_INSTRUCTION,
                 tools: [{
                     fileSearch: {
-                        fileSearchStoreNames: selectedStoreNames
+                        fileSearchStoreNames: limitedStoreNames
                     }
                 }]
             }

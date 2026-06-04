@@ -100,7 +100,8 @@ export default function ArticlePage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Erro ao gerar artigo.");
+        const detail = data.details ? ` | ${data.details}` : '';
+        setError((data.error || "Erro ao gerar artigo.") + detail);
       } else {
         setArticle(data.article);
       }
@@ -262,7 +263,12 @@ export default function ArticlePage() {
                   {selectedKeyIds.length === 0 && (
                     <p className="text-xs text-red-400 mt-2">Selecione pelo menos uma fonte.</p>
                   )}
-                  {selectedKeyIds.length > 0 && (
+                  {selectedKeyIds.length > 5 && (
+                    <p className="text-xs text-yellow-400 mt-2">
+                      ⚠️ A API permite no máximo 5 fontes. As primeiras 5 selecionadas serão usadas.
+                    </p>
+                  )}
+                  {selectedKeyIds.length > 0 && selectedKeyIds.length <= 5 && (
                     <p className={`text-xs mt-2 ${descClass}`}>
                       {selectedKeyIds.length === apiKeys.length
                         ? "Pesquisando em todas as fontes"
