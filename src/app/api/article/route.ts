@@ -38,7 +38,12 @@ export async function POST(request: NextRequest) {
         userEmail = getEmailFromAuthHeader(authHeader);
         console.log('[Article] userEmail do JWT:', userEmail || '(não encontrado)');
 
-        const { topic, tone, length, structure, apiKeyId } = await request.json();
+        const { topic, tone, length, structure, apiKeyIds } = await request.json();
+
+        // Normaliza: aceita array (novo) ou string única (compatibilidade)
+        const keyIds: string[] = Array.isArray(apiKeyIds)
+            ? apiKeyIds
+            : apiKeyIds ? [apiKeyIds] : [];
 
         if (!topic || !topic.trim()) {
             return NextResponse.json({ error: "O tema do artigo é obrigatório" }, { status: 400 });
@@ -70,18 +75,13 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        let apiKey = process.env.GEMINI_API_KEY;
-        let storeSuffix = "";
-
-        if (apiKeyId) {
-            const keyData = getApiKeyById(apiKeyId);
-            if (keyData) {
-                apiKey = keyData.apiKey;
-                if (keyData.id !== 'default') {
-                    storeSuffix = `_${keyData.theme.replace(/\s+/g, '_')}`;
-                }
-            }
+        if (keyIds.length === 0) {
+            return NextResponse.json({ error: "Selecione pelo menos uma fonte." }, { status: 400 });
         }
+
+        // Usa a chave da primeira fonte selecionada para autenticar o cliente Gemini
+        const primaryKeyData = getApiKeyById(keyIds[0]);
+        const apiKey = primaryKeyData?.apiKey || process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
             return NextResponse.json({ error: "Nenhuma chave API configurada" }, { status: 500 });
@@ -89,20 +89,37 @@ export async function POST(request: NextRequest) {
 
         const genAIClient = new GoogleGenAI({ apiKey });
 
+        // Listar todos os stores acessíveis com esta chave
         const storesIterator = await genAIClient.fileSearchStores.list();
-        const stores = [];
+        const allStores: any[] = [];
         for await (const store of storesIterator) {
-            stores.push(store);
+            allStores.push(store);
         }
 
-        const storeDisplayName = FILE_SEARCH_STORE_NAME + storeSuffix;
-        const store = stores.find((s: any) => s.displayName === storeDisplayName);
+        // Coletar os stores de todas as fontes selecionadas
+        const selectedStoreNames: string[] = [];
+        for (const keyId of keyIds) {
+            const keyData = getApiKeyById(keyId);
+            const suffix = keyData && keyData.id !== 'default'
+                ? `_${keyData.theme.replace(/\s+/g, '_')}`
+                : '';
+            const displayName = FILE_SEARCH_STORE_NAME + suffix;
+            const found = allStores.find((s: any) => s.displayName === displayName);
+            if (found?.name) {
+                selectedStoreNames.push(found.name);
+                console.log(`[Article] Store encontrado: ${displayName}`);
+            } else {
+                console.warn(`[Article] Store não encontrado: ${displayName}`);
+            }
+        }
 
-        if (!store || !store.name) {
+        if (selectedStoreNames.length === 0) {
             return NextResponse.json({
-                error: "Nenhum banco de documentos encontrado para este chat. Por favor, faça upload de arquivos primeiro.",
+                error: "Nenhum banco de documentos encontrado para as fontes selecionadas. Por favor, faça upload de arquivos primeiro.",
             }, { status: 404 });
         }
+
+        console.log(`[Article] Usando ${selectedStoreNames.length} store(s) para geração`);
 
         const toneMap: Record<string, string> = {
             informativo: "tom informativo e claro, acessível ao público geral",
@@ -142,7 +159,7 @@ IMPORTANTE: Baseie-se EXCLUSIVAMENTE nos documentos disponíveis via File Search
                 systemInstruction: ARTICLE_SYSTEM_INSTRUCTION,
                 tools: [{
                     fileSearch: {
-                        fileSearchStoreNames: [store.name as string]
+                        fileSearchStoreNames: selectedStoreNames
                     }
                 }]
             }
@@ -171,7 +188,7 @@ IMPORTANTE: Baseie-se EXCLUSIVAMENTE nos documentos disponíveis via File Search
                 outputTokens: completionTokens,
                 requestDurationMs: durationMs,
                 status: 'success',
-                metadata: { apiKeyId: apiKeyId || 'default', feature: 'article', tone, length, structure }
+                metadata: { apiKeyIds: keyIds, feature: 'article', tone, length, structure, storesUsed: selectedStoreNames.length }
             }).then(() => {
                 console.log('[Article] trackUsage concluído, verificando dedução...');
                 return checkAndDeductCredits(userEmail!);

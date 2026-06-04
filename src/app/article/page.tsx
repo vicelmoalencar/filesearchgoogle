@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { FileText, Sparkles, Sun, Moon, LogOut, Copy, Download, ArrowLeft, Check, Loader2 } from "lucide-react";
+import { FileText, Sparkles, Sun, Moon, LogOut, Copy, Download, ArrowLeft, Check, Loader2, Database } from "lucide-react";
 import MessageContent from "@/components/MessageContent";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,7 +41,7 @@ export default function ArticlePage() {
   const [length, setLength] = useState("medio");
   const [structure, setStructure] = useState("completo");
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
-  const [selectedKeyId, setSelectedKeyId] = useState("");
+  const [selectedKeyIds, setSelectedKeyIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [article, setArticle] = useState("");
   const [error, setError] = useState("");
@@ -60,7 +60,8 @@ export default function ArticlePage() {
         const data = await response.json();
         if (data.keys && data.keys.length > 0) {
           setApiKeys(data.keys);
-          setSelectedKeyId(data.keys[0].id);
+          // Seleciona todas as fontes por padrão
+          setSelectedKeyIds(data.keys.map((k: ApiKey) => k.id));
         }
       } catch {
         // silently fail
@@ -69,9 +70,15 @@ export default function ArticlePage() {
     loadApiKeys();
   }, []);
 
+  const toggleKey = (id: string) => {
+    setSelectedKeyIds(prev =>
+      prev.includes(id) ? prev.filter(k => k !== id) : [...prev, id]
+    );
+  };
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!topic.trim() || loading) return;
+    if (!topic.trim() || loading || selectedKeyIds.length === 0) return;
 
     setLoading(true);
     setArticle("");
@@ -87,7 +94,7 @@ export default function ArticlePage() {
           "Content-Type": "application/json",
           ...(authToken && { "Authorization": `Bearer ${authToken}` })
         },
-        body: JSON.stringify({ topic: topic.trim(), tone, length, structure, apiKeyId: selectedKeyId }),
+        body: JSON.stringify({ topic: topic.trim(), tone, length, structure, apiKeyIds: selectedKeyIds }),
       });
 
       const data = await res.json();
@@ -120,14 +127,10 @@ export default function ArticlePage() {
     URL.revokeObjectURL(url);
   };
 
-  const cardClass = isDark
-    ? "bg-gray-800/60 border-gray-700/50"
-    : "bg-white border-gray-200";
-
+  const cardClass = isDark ? "bg-gray-800/60 border-gray-700/50" : "bg-white border-gray-200";
   const inputClass = isDark
     ? "bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:ring-blue-500/50 focus:border-blue-500/50"
     : "bg-gray-50 border-gray-300 text-gray-900 placeholder:text-gray-400 focus:ring-blue-500/50 focus:border-blue-500/50";
-
   const labelClass = isDark ? "text-gray-300" : "text-gray-700";
   const descClass = isDark ? "text-gray-500" : "text-gray-500";
 
@@ -165,24 +168,6 @@ export default function ArticlePage() {
 
             <div className="flex items-center gap-2">
               <CreditsDisplay />
-              {apiKeys.length > 0 && (
-                <select
-                  value={selectedKeyId}
-                  onChange={(e) => setSelectedKeyId(e.target.value)}
-                  style={isDark ? { colorScheme: "dark", background: "rgba(255,255,255,0.05)", color: "white" } : undefined}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
-                    isDark
-                      ? "bg-white/5 border-white/10 text-white hover:bg-white/10 [&>option]:bg-gray-800 [&>option]:text-white"
-                      : "bg-gray-100 border-gray-300 text-gray-900 hover:bg-gray-200"
-                  }`}
-                >
-                  {apiKeys.map((key) => (
-                    <option key={key.id} value={key.id}>
-                      {key.theme} - {key.name}
-                    </option>
-                  ))}
-                </select>
-              )}
               <button
                 onClick={toggleTheme}
                 className={`p-2 rounded-lg transition-colors ${isDark ? "hover:bg-white/5 text-gray-400" : "hover:bg-gray-200 text-gray-600"}`}
@@ -215,6 +200,77 @@ export default function ArticlePage() {
                   disabled={loading}
                 />
               </div>
+
+              {/* Sources multi-select */}
+              {apiKeys.length > 1 && (
+                <div className={`p-5 rounded-2xl border backdrop-blur-sm ${cardClass}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className={`text-sm font-semibold flex items-center gap-2 ${labelClass}`}>
+                      <Database className="w-4 h-4" />
+                      Fontes
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedKeyIds(apiKeys.map(k => k.id))}
+                        disabled={loading}
+                        className={`text-xs px-2 py-1 rounded-lg transition-colors ${isDark ? "text-blue-400 hover:bg-white/5" : "text-blue-600 hover:bg-gray-100"}`}
+                      >
+                        Todas
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedKeyIds([])}
+                        disabled={loading}
+                        className={`text-xs px-2 py-1 rounded-lg transition-colors ${isDark ? "text-gray-500 hover:bg-white/5" : "text-gray-500 hover:bg-gray-100"}`}
+                      >
+                        Nenhuma
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {apiKeys.map((key) => {
+                      const isSelected = selectedKeyIds.includes(key.id);
+                      return (
+                        <label
+                          key={key.id}
+                          className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors border ${
+                            isSelected
+                              ? "border-blue-500 bg-blue-500/10"
+                              : isDark
+                              ? "border-transparent hover:bg-white/5"
+                              : "border-transparent hover:bg-gray-100"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleKey(key.id)}
+                            className="accent-blue-500 w-4 h-4 flex-shrink-0"
+                            disabled={loading}
+                          />
+                          <div className="min-w-0">
+                            <div className={`text-sm font-medium truncate ${isDark ? "text-white" : "text-gray-900"}`}>
+                              {key.theme}
+                            </div>
+                            <div className={`text-xs truncate ${descClass}`}>{key.name}</div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {selectedKeyIds.length === 0 && (
+                    <p className="text-xs text-red-400 mt-2">Selecione pelo menos uma fonte.</p>
+                  )}
+                  {selectedKeyIds.length > 0 && (
+                    <p className={`text-xs mt-2 ${descClass}`}>
+                      {selectedKeyIds.length === apiKeys.length
+                        ? "Pesquisando em todas as fontes"
+                        : `${selectedKeyIds.length} de ${apiKeys.length} fonte(s) selecionada(s)`}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Tone */}
               <div className={`p-5 rounded-2xl border backdrop-blur-sm ${cardClass}`}>
@@ -309,7 +365,7 @@ export default function ArticlePage() {
 
               <button
                 type="submit"
-                disabled={!topic.trim() || loading}
+                disabled={!topic.trim() || loading || selectedKeyIds.length === 0}
                 className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
               >
                 {loading ? (
@@ -365,7 +421,6 @@ export default function ArticlePage() {
 
               {article && (
                 <div className={`rounded-2xl border overflow-hidden ${cardClass}`}>
-                  {/* Action bar */}
                   <div className={`flex items-center justify-between px-5 py-3 border-b ${isDark ? "border-white/10 bg-white/5" : "border-gray-200 bg-gray-50"}`}>
                     <span className={`text-sm font-medium ${isDark ? "text-gray-300" : "text-gray-700"}`}>Artigo gerado</span>
                     <div className="flex gap-2">
@@ -374,7 +429,6 @@ export default function ArticlePage() {
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                           isDark ? "hover:bg-white/10 text-gray-400 hover:text-white" : "hover:bg-gray-200 text-gray-600"
                         }`}
-                        title="Copiar para área de transferência"
                       >
                         {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
                         {copied ? "Copiado!" : "Copiar"}
@@ -384,15 +438,12 @@ export default function ArticlePage() {
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                           isDark ? "hover:bg-white/10 text-gray-400 hover:text-white" : "hover:bg-gray-200 text-gray-600"
                         }`}
-                        title="Baixar como Markdown"
                       >
                         <Download className="w-3.5 h-3.5" />
                         Baixar .md
                       </button>
                     </div>
                   </div>
-
-                  {/* Article content */}
                   <div ref={articleRef} className="p-6 overflow-y-auto max-h-[70vh] custom-scrollbar">
                     <MessageContent text={article} role="model" theme={theme} />
                   </div>
