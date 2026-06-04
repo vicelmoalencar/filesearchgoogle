@@ -7,6 +7,8 @@ import MessageContent from "@/components/MessageContent";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import CreditsDisplay from "@/components/CreditsDisplay";
+import { supabase } from "@/lib/supabase";
 
 interface ApiKey {
   id: string;
@@ -76,9 +78,15 @@ export default function ArticlePage() {
     setError("");
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
+
       const res = await fetch("/api/article", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken && { "Authorization": `Bearer ${authToken}` })
+        },
         body: JSON.stringify({ topic: topic.trim(), tone, length, structure, apiKeyId: selectedKeyId }),
       });
 
@@ -147,6 +155,7 @@ export default function ArticlePage() {
             </div>
 
             <div className="flex items-center gap-2">
+              <CreditsDisplay />
               {apiKeys.length > 0 && (
                 <select
                   value={selectedKeyId}

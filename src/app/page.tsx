@@ -7,6 +7,8 @@ import MessageContent from "@/components/MessageContent";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import CreditsDisplay from "@/components/CreditsDisplay";
+import { supabase } from "@/lib/supabase";
 
 interface Message {
   role: "user" | "model";
@@ -37,7 +39,6 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  // Carregar chaves de API disponíveis
   useEffect(() => {
     const loadApiKeys = async () => {
       try {
@@ -64,9 +65,15 @@ export default function ChatPage() {
     setLoading(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
+
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken && { "Authorization": `Bearer ${authToken}` })
+        },
         body: JSON.stringify({
           message: userMessage,
           history: messages.map(m => ({
@@ -79,14 +86,16 @@ export default function ChatPage() {
 
       const data = await res.json();
 
-      if (data.response) {
+      if (res.status === 403) {
+        setMessages((prev) => [...prev, { role: "model", text: "⚠️ " + (data.error || "Créditos insuficientes.") }]);
+      } else if (data.response) {
         setMessages((prev) => [...prev, { role: "model", text: data.response }]);
       } else {
-        setMessages((prev) => [...prev, { role: "model", text: "Sorry, I encountered an error." }]);
+        setMessages((prev) => [...prev, { role: "model", text: "Desculpe, ocorreu um erro." }]);
       }
     } catch (error) {
       console.error("Chat error:", error);
-      setMessages((prev) => [...prev, { role: "model", text: "Sorry, something went wrong." }]);
+      setMessages((prev) => [...prev, { role: "model", text: "Desculpe, algo deu errado." }]);
     } finally {
       setLoading(false);
     }
@@ -139,6 +148,7 @@ export default function ChatPage() {
           )}
         </div>
         <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
+          <CreditsDisplay />
           <button
             onClick={toggleTheme}
             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-white/5 text-gray-400' : 'hover:bg-gray-200 text-gray-600'}`}
