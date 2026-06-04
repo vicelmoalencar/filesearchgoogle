@@ -4,7 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 import { FILE_SEARCH_STORE_NAME, MODEL_NAME } from "@/lib/gemini";
 import { getSystemPrompt } from "@/app/api/prompt/route";
 import { getApiKeyById } from "@/lib/api-keys-env";
-import { getServerUser } from "@/lib/supabase-server";
+import { getEmailFromAuthHeader } from "@/lib/supabase-server";
 import { trackUsage, checkAndDeductCredits } from "@/lib/creditos-centralizados";
 
 function estimateTokens(text: string): number {
@@ -16,12 +16,10 @@ export async function POST(request: NextRequest) {
     let userEmail: string | null = null;
 
     try {
-        // Obter usuário autenticado via cookies (SSR)
-        const user = await getServerUser();
-        if (user) {
-            userEmail = user.email || null;
-            console.log('[Chat] userEmail obtido:', userEmail);
-        }
+        // Extrair email do JWT no Authorization header
+        const authHeader = request.headers.get('authorization');
+        userEmail = getEmailFromAuthHeader(authHeader);
+        console.log('[Chat] userEmail do JWT:', userEmail || '(não encontrado)');
 
         const { message, history, apiKeyId } = await request.json();
 

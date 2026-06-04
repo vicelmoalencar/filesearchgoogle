@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { FILE_SEARCH_STORE_NAME, MODEL_NAME } from "@/lib/gemini";
 import { getApiKeyById } from "@/lib/api-keys-env";
-import { getServerUser } from "@/lib/supabase-server";
+import { getEmailFromAuthHeader } from "@/lib/supabase-server";
 import { trackUsage, checkAndDeductCredits } from "@/lib/creditos-centralizados";
 
 function estimateTokens(text: string): number {
@@ -33,14 +33,10 @@ export async function POST(request: NextRequest) {
     console.log('[Article] DATABASE_URL_CREDITOS configurado:', !!process.env.DATABASE_URL_CREDITOS);
 
     try {
-        // Obter usuário autenticado via cookies (SSR)
-        const user = await getServerUser();
-        if (user) {
-            userEmail = user.email || null;
-            console.log('[Article] userEmail obtido via cookie:', userEmail);
-        } else {
-            console.warn('[Article] Usuário não encontrado nos cookies — créditos não serão deduzidos');
-        }
+        // Extrair email do JWT no Authorization header
+        const authHeader = request.headers.get('authorization');
+        userEmail = getEmailFromAuthHeader(authHeader);
+        console.log('[Article] userEmail do JWT:', userEmail || '(não encontrado)');
 
         const { topic, tone, length, structure, apiKeyId } = await request.json();
 
