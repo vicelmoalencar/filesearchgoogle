@@ -134,6 +134,15 @@ export default function ArticlePage() {
   return (
     <ProtectedRoute>
       <div className={`min-h-screen ${isDark ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}>
+        {/* Barra do logo Suite Plus */}
+        <div className="w-full py-4 bg-gray-900 border-b border-gray-700">
+          <div className="max-w-5xl mx-auto px-4 flex justify-center">
+            <a href="https://suiteplus.ensinoplus.com.br" title="Voltar para Suite Plus" className="hover:opacity-80 transition-opacity">
+              <img src="/assets/logo_suite.png" alt="Suite Plus" className="h-16 sm:h-20 w-auto" />
+            </a>
+          </div>
+        </div>
+
         <div className="max-w-5xl mx-auto px-4 py-6">
           {/* Header */}
           <header className={`flex justify-between items-center pb-4 mb-6 border-b ${isDark ? "border-white/10" : "border-gray-200"}`}>

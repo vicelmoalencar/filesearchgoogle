@@ -103,7 +103,17 @@ export default function ChatPage() {
 
   return (
     <ProtectedRoute>
-      <div className="flex flex-col h-screen max-w-7xl mx-auto p-3 sm:p-4 md:p-6">
+      <div className="flex flex-col h-screen">
+      {/* Barra do logo Suite Plus */}
+      <div className="w-full py-4 bg-gray-900 border-b border-gray-700 flex-shrink-0">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 flex justify-center">
+          <a href="https://suiteplus.ensinoplus.com.br" title="Voltar para Suite Plus" className="hover:opacity-80 transition-opacity">
+            <img src="/assets/logo_suite.png" alt="Suite Plus" className="h-16 sm:h-20 w-auto" />
+          </a>
+        </div>
+      </div>
+
+      <div className="flex flex-col flex-1 max-w-7xl mx-auto w-full p-3 sm:p-4 md:p-6 min-h-0">
       <header className={`flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 py-4 mb-4 border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-300'}`}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full lg:w-auto">
           <div className="flex items-center gap-3">
@@ -273,6 +283,7 @@ export default function ChatPage() {
           <Send className="w-5 h-5 text-white" />
         </button>
       </form>
+      </div>
     </div>
     </ProtectedRoute>
   );
