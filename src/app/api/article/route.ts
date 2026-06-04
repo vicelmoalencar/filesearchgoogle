@@ -30,14 +30,25 @@ export async function POST(request: NextRequest) {
     const startTime = Date.now();
     let userEmail: string | null = null;
 
+    // Diagnóstico de variáveis de ambiente
+    console.log('[Article] DATABASE_URL_CREDITOS configurado:', !!process.env.DATABASE_URL_CREDITOS);
+
     try {
         // Obter usuário autenticado
         const authHeader = request.headers.get('authorization');
+        console.log('[Article] Auth header presente:', !!authHeader);
+
         if (authHeader) {
-            const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+            const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+            if (authError) console.error('[Article] Erro ao obter usuário:', authError.message);
             if (user) {
                 userEmail = user.email || null;
+                console.log('[Article] userEmail obtido:', userEmail);
+            } else {
+                console.warn('[Article] Usuário não encontrado no token');
             }
+        } else {
+            console.warn('[Article] Nenhum Authorization header — créditos não serão deduzidos');
         }
 
         const { topic, tone, length, structure, apiKeyId } = await request.json();
@@ -164,6 +175,8 @@ IMPORTANTE: Baseie-se EXCLUSIVAMENTE nos documentos disponíveis via File Search
             const promptTokens = estimateTokens(userPrompt) + estimateTokens(ARTICLE_SYSTEM_INSTRUCTION);
             const completionTokens = estimateTokens(article);
 
+            console.log(`[Article] Iniciando tracking: ${promptTokens} prompt + ${completionTokens} completion tokens`);
+
             trackUsage({
                 userEmail,
                 modelCode: MODEL_NAME,
@@ -172,13 +185,19 @@ IMPORTANTE: Baseie-se EXCLUSIVAMENTE nos documentos disponíveis via File Search
                 requestDurationMs: durationMs,
                 status: 'success',
                 metadata: { apiKeyId: apiKeyId || 'default', feature: 'article', tone, length, structure }
-            }).then(() => checkAndDeductCredits(userEmail!)).then((result) => {
-                if (result.creditsDeducted) {
-                    console.log(`[Article] ✅ Deduzido ${result.creditsDeducted} crédito(s) de ${userEmail}`);
+            }).then(() => {
+                console.log('[Article] trackUsage concluído, verificando dedução...');
+                return checkAndDeductCredits(userEmail!);
+            }).then((result) => {
+                console.log(`[Article] Resultado créditos: balance=${result.creditsBalance}, deduzido=${result.creditsDeducted || 0}, acumulado=R$${result.accumulatedCost?.toFixed(6)}`);
+                if (!result.success) {
+                    console.warn(`[Article] Falha na dedução: ${result.error || result.message}`);
                 }
             }).catch(err => {
-                console.error('[Article] Failed to track usage:', err);
+                console.error('[Article] ERRO no tracking de créditos:', err instanceof Error ? err.message : err);
             });
+        } else {
+            console.warn('[Article] userEmail nulo — tracking de créditos ignorado');
         }
 
         return NextResponse.json({ article });
