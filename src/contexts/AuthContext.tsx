@@ -27,34 +27,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkIsAdmin = async (userEmail: string) => {
     setCheckingAdmin(true);
     try {
-      console.log('Checking admin status for user email:', userEmail);
+      // 1. Checar por variável de ambiente (NEXT_PUBLIC_ADMIN_EMAILS)
+      const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS || '';
+      if (adminEmails) {
+        const list = adminEmails.split(',').map(e => e.trim().toLowerCase());
+        if (list.includes(userEmail.toLowerCase())) {
+          setIsAdmin(true);
+          return;
+        }
+      }
 
-      // First, get the user ID from the users table by email
+      // 2. Fallback: checar tabela admins no Supabase
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id')
         .eq('email', userEmail)
         .single();
 
-      console.log('User lookup result:', { userData, userError });
-
       if (userError || !userData) {
-        console.log('User not found in users table');
         setIsAdmin(false);
         return;
       }
 
       const customUserId = userData.id;
-      console.log('Custom user ID:', customUserId);
 
-      // Now check if this user ID exists in the admins table
       const { data: adminData, error: adminError } = await supabase
         .from('admins')
         .select('id')
         .eq('id', customUserId)
         .single();
-
-      console.log('Admin check result:', { adminData, adminError });
 
       setIsAdmin(!!adminData && !adminError);
     } catch (error) {
