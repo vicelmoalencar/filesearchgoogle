@@ -27,37 +27,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkIsAdmin = async (userEmail: string) => {
     setCheckingAdmin(true);
     try {
-      // 1. Checar por variável de ambiente (NEXT_PUBLIC_ADMIN_EMAILS)
-      const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS || '';
-      if (adminEmails) {
-        const list = adminEmails.split(',').map(e => e.trim().toLowerCase());
-        if (list.includes(userEmail.toLowerCase())) {
-          setIsAdmin(true);
-          return;
-        }
-      }
-
-      // 2. Fallback: checar tabela admins no Supabase
-      const { data: userData, error: userError } = await supabase
+      const { data, error } = await supabase
         .from('users')
-        .select('id')
+        .select('isadmin')
         .eq('email', userEmail)
         .single();
 
-      if (userError || !userData) {
-        setIsAdmin(false);
-        return;
-      }
-
-      const customUserId = userData.id;
-
-      const { data: adminData, error: adminError } = await supabase
-        .from('admins')
-        .select('id')
-        .eq('id', customUserId)
-        .single();
-
-      setIsAdmin(!!adminData && !adminError);
+      setIsAdmin(!error && !!data?.isadmin);
     } catch (error) {
       console.error('Error checking admin status:', error);
       setIsAdmin(false);
