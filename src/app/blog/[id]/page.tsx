@@ -40,11 +40,12 @@ const LENGTH_LABELS: Record<string, string> = {
   longo: "Longo (~1200 palavras)",
 };
 
-export default function ArticleDetailPage({ params }: { params: { id: string } }) {
+export default function ArticleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [articleId, setArticleId] = useState<string>("");
 
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -52,7 +53,9 @@ export default function ArticleDetailPage({ params }: { params: { id: string } }
   useEffect(() => {
     const fetchArticle = async () => {
       try {
-        const res = await fetch(`/api/articles/${params.id}`);
+        const { id } = await params;
+        setArticleId(id);
+        const res = await fetch(`/api/articles/${id}`);
         if (!res.ok) {
           setNotFound(true);
           return;

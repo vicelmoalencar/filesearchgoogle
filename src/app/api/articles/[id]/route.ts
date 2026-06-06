@@ -3,14 +3,15 @@ import { createServerSupabaseAnon } from '@/lib/supabase-server';
 
 export async function GET(
     _request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         const supabase = createServerSupabaseAnon();
         const { data, error } = await supabase
             .from('articles')
             .select('*')
-            .eq('id', params.id)
+            .eq('id', id)
             .eq('published', true)
             .single();
 
