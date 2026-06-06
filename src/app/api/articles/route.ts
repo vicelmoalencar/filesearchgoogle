@@ -6,10 +6,11 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const tag = searchParams.get('tag') || null;
+        const search = searchParams.get('search') || null;
         const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
         const limit = 12;
 
-        const { articles, total } = await listPublishedArticles(page, limit, tag);
+        const { articles, total } = await listPublishedArticles(page, limit, tag, search);
 
         return NextResponse.json({ articles, total });
     } catch (error) {

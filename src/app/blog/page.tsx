@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback } from "react";
-import { BookOpen, Tag, Calendar, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { Suspense, useState, useEffect, useCallback, useRef } from "react";
+import { BookOpen, Tag, Calendar, ChevronLeft, ChevronRight, FileText, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -38,6 +38,9 @@ function BlogContent() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -46,11 +49,12 @@ function BlogContent() {
   const LIMIT = 12;
   const totalPages = Math.ceil(total / LIMIT);
 
-  const fetchArticles = useCallback(async (p: number, tag: string | null) => {
+  const fetchArticles = useCallback(async (p: number, tag: string | null, search: string) => {
     setLoading(true);
     try {
       const qs = new URLSearchParams({ page: String(p) });
       if (tag) qs.set("tag", tag);
+      if (search) qs.set("search", search);
       const res = await fetch(`/api/articles?${qs}`);
       const data = await res.json();
       setArticles(data.articles || []);
@@ -66,20 +70,37 @@ function BlogContent() {
     const tag = searchParams.get("tag");
     setActiveTag(tag);
     setPage(1);
-    fetchArticles(1, tag);
+    fetchArticles(1, tag, activeSearch);
   }, [searchParams, fetchArticles]);
 
   const handleTagClick = (tag: string) => {
     const next = activeTag === tag ? null : tag;
     setActiveTag(next);
     setPage(1);
-    fetchArticles(1, next);
+    fetchArticles(1, next, activeSearch);
     window.history.replaceState(null, "", next ? `/blog?tag=${encodeURIComponent(next)}` : "/blog");
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchInput(value);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      setActiveSearch(value);
+      setPage(1);
+      fetchArticles(1, activeTag, value);
+    }, 400);
+  };
+
+  const clearSearch = () => {
+    setSearchInput("");
+    setActiveSearch("");
+    setPage(1);
+    fetchArticles(1, activeTag, "");
   };
 
   const handlePageChange = (p: number) => {
     setPage(p);
-    fetchArticles(p, activeTag);
+    fetchArticles(p, activeTag, activeSearch);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -128,18 +149,47 @@ function BlogContent() {
           </div>
         </div>
 
-        {/* Tag filter */}
-        {activeTag && (
-          <div className="flex items-center gap-2 mb-6">
-            <Tag className={`w-4 h-4 ${descClass}`} />
-            <span className={`text-sm ${descClass}`}>Filtrando por:</span>
-            <button
-              onClick={() => handleTagClick(activeTag)}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-sm hover:bg-blue-500/30 transition-colors"
-            >
-              {activeTag}
-              <span className="text-blue-300">×</span>
+        {/* Search bar */}
+        <div className={`relative mb-6 rounded-2xl border flex items-center gap-3 px-4 py-3 ${isDark ? "bg-gray-800/60 border-gray-700/50" : "bg-white border-gray-200"}`}>
+          <Search className={`w-4 h-4 flex-shrink-0 ${isDark ? "text-gray-500" : "text-gray-400"}`} />
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Buscar artigos por título, tema ou tag..."
+            className={`flex-1 bg-transparent text-sm outline-none ${isDark ? "text-white placeholder:text-gray-500" : "text-gray-900 placeholder:text-gray-400"}`}
+          />
+          {searchInput && (
+            <button onClick={clearSearch} className={`p-1 rounded-lg transition-colors ${isDark ? "text-gray-500 hover:text-gray-300" : "text-gray-400 hover:text-gray-600"}`}>
+              <X className="w-4 h-4" />
             </button>
+          )}
+        </div>
+
+        {/* Active filters */}
+        {(activeTag || activeSearch) && (
+          <div className="flex flex-wrap items-center gap-2 mb-5">
+            <span className={`text-xs ${descClass}`}>Filtros ativos:</span>
+            {activeTag && (
+              <button
+                onClick={() => handleTagClick(activeTag)}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs hover:bg-blue-500/30 transition-colors"
+              >
+                <Tag className="w-3 h-3" />
+                {activeTag}
+                <span className="text-blue-300">×</span>
+              </button>
+            )}
+            {activeSearch && (
+              <button
+                onClick={clearSearch}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-colors ${isDark ? "bg-white/10 text-gray-300 hover:bg-white/20" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
+              >
+                <Search className="w-3 h-3" />
+                &quot;{activeSearch}&quot;
+                <span className="opacity-60">×</span>
+              </button>
+            )}
           </div>
         )}
 

@@ -94,18 +94,31 @@ export async function saveArticle(data: ArticleInsert): Promise<string | null> {
     }
 }
 
-export async function listPublishedArticles(page: number, limit: number, tag?: string | null): Promise<{ articles: ArticleSummary[]; total: number }> {
+export async function listPublishedArticles(
+    page: number,
+    limit: number,
+    tag?: string | null,
+    search?: string | null
+): Promise<{ articles: ArticleSummary[]; total: number }> {
     try {
         await ensureTable();
         const offset = (page - 1) * limit;
 
-        let whereClause = 'WHERE published = TRUE';
+        const conditions: string[] = ['published = TRUE'];
         const params: unknown[] = [];
 
         if (tag) {
             params.push(tag);
-            whereClause += ` AND $${params.length} = ANY(tags)`;
+            conditions.push(`$${params.length} = ANY(tags)`);
         }
+
+        if (search && search.trim()) {
+            params.push(`%${search.trim()}%`);
+            const i = params.length;
+            conditions.push(`(title ILIKE $${i} OR topic ILIKE $${i} OR array_to_string(tags, ' ') ILIKE $${i})`);
+        }
+
+        const whereClause = 'WHERE ' + conditions.join(' AND ');
 
         const countResult = await pool.query(
             `SELECT COUNT(*) FROM cct_articles ${whereClause}`,
