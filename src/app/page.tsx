@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Paperclip, Sparkles, Sun, Moon, LogOut, BarChart3, FileText } from "lucide-react";
+import { Send, Bot, User, Paperclip, Sparkles, Sun, Moon, LogOut, BarChart3, FileText, BookOpen } from "lucide-react";
 import MessageContent from "@/components/MessageContent";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -173,6 +173,13 @@ export default function ChatPage() {
             <FileText className="w-4 h-4" />
             <span className="hidden sm:inline">Gerar Artigo</span>
             <span className="sm:hidden">Artigo</span>
+          </a>
+          <a
+            href="/blog"
+            className={`text-xs sm:text-sm transition-colors flex items-center gap-2 px-2 sm:px-4 py-2 rounded-lg ${theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
+          >
+            <BookOpen className="w-4 h-4" />
+            <span className="hidden sm:inline">Blog</span>
           </a>
           {isAdmin && (
             <>

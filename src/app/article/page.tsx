@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { FileText, Sparkles, Sun, Moon, LogOut, Copy, Download, ArrowLeft, Check, Loader2, Database } from "lucide-react";
+import { FileText, Sparkles, Sun, Moon, LogOut, Copy, Download, ArrowLeft, Check, Loader2, Database, BookOpen, Globe, GlobeLock } from "lucide-react";
 import MessageContent from "@/components/MessageContent";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,17 +40,21 @@ export default function ArticlePage() {
   const [tone, setTone] = useState("informativo");
   const [length, setLength] = useState("medio");
   const [structure, setStructure] = useState("completo");
+  const [publishArticle, setPublishArticle] = useState(true);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [selectedKeyIds, setSelectedKeyIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [article, setArticle] = useState("");
+  const [articleId, setArticleId] = useState<string | null>(null);
+  const [articleTags, setArticleTags] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [isPublished, setIsPublished] = useState(true);
+  const [togglingPublish, setTogglingPublish] = useState(false);
   const articleRef = useRef<HTMLDivElement>(null);
 
   const { theme, toggleTheme } = useTheme();
   const { signOut } = useAuth();
-
   const isDark = theme === "dark";
 
   useEffect(() => {
@@ -60,7 +64,6 @@ export default function ArticlePage() {
         const data = await response.json();
         if (data.keys && data.keys.length > 0) {
           setApiKeys(data.keys);
-          // Seleciona todas as fontes por padrão
           setSelectedKeyIds(data.keys.map((k: ApiKey) => k.id));
         }
       } catch {
@@ -82,6 +85,8 @@ export default function ArticlePage() {
 
     setLoading(true);
     setArticle("");
+    setArticleId(null);
+    setArticleTags([]);
     setError("");
 
     try {
@@ -94,7 +99,14 @@ export default function ArticlePage() {
           "Content-Type": "application/json",
           ...(authToken && { "Authorization": `Bearer ${authToken}` })
         },
-        body: JSON.stringify({ topic: topic.trim(), tone, length, structure, apiKeyIds: selectedKeyIds }),
+        body: JSON.stringify({
+          topic: topic.trim(),
+          tone,
+          length,
+          structure,
+          apiKeyIds: selectedKeyIds,
+          publish: publishArticle,
+        }),
       });
 
       const data = await res.json();
@@ -104,11 +116,32 @@ export default function ArticlePage() {
         setError((data.error || "Erro ao gerar artigo.") + detail);
       } else {
         setArticle(data.article);
+        setArticleId(data.articleId ?? null);
+        setArticleTags(data.tags ?? []);
+        setIsPublished(publishArticle);
       }
     } catch {
       setError("Erro de conexão. Tente novamente.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTogglePublish = async () => {
+    if (!articleId || togglingPublish) return;
+    setTogglingPublish(true);
+    try {
+      const newStatus = !isPublished;
+      const res = await fetch('/api/articles', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: articleId, published: newStatus }),
+      });
+      if (res.ok) setIsPublished(newStatus);
+    } catch {
+      // silently fail
+    } finally {
+      setTogglingPublish(false);
     }
   };
 
@@ -138,7 +171,7 @@ export default function ArticlePage() {
   return (
     <ProtectedRoute>
       <div className={`min-h-screen ${isDark ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}>
-        {/* Barra do logo Suite Plus */}
+        {/* Barra Suite Plus */}
         <div className="w-full py-4 bg-gray-900 border-b border-gray-700">
           <div className="max-w-5xl mx-auto px-4 flex justify-center">
             <a href="https://suiteplus.ensinoplus.com.br" title="Voltar para Suite Plus" className="hover:opacity-80 transition-opacity">
@@ -168,6 +201,13 @@ export default function ArticlePage() {
             </div>
 
             <div className="flex items-center gap-2">
+              <a
+                href="/blog"
+                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${isDark ? "hover:bg-white/5 text-gray-400 hover:text-white" : "hover:bg-gray-200 text-gray-600"}`}
+              >
+                <BookOpen className="w-4 h-4" />
+                Blog
+              </a>
               <CreditsDisplay />
               <button
                 onClick={toggleTheme}
@@ -369,6 +409,33 @@ export default function ArticlePage() {
                 </div>
               </div>
 
+              {/* Publicar no Blog toggle */}
+              <div className={`flex items-center justify-between p-4 rounded-2xl border backdrop-blur-sm ${cardClass}`}>
+                <div>
+                  <div className={`text-sm font-semibold flex items-center gap-2 ${labelClass}`}>
+                    <Globe className="w-4 h-4" />
+                    Publicar no Blog
+                  </div>
+                  <div className={`text-xs mt-0.5 ${descClass}`}>
+                    {publishArticle ? "Visível publicamente em /blog" : "Apenas salvo, não publicado"}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPublishArticle(!publishArticle)}
+                  disabled={loading}
+                  className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${
+                    publishArticle ? "bg-blue-500" : isDark ? "bg-gray-700" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                      publishArticle ? "translate-x-6" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+
               <button
                 type="submit"
                 disabled={!topic.trim() || loading || selectedKeyIds.length === 0}
@@ -427,9 +494,53 @@ export default function ArticlePage() {
 
               {article && (
                 <div className={`rounded-2xl border overflow-hidden ${cardClass}`}>
+                  {/* Article toolbar */}
                   <div className={`flex items-center justify-between px-5 py-3 border-b ${isDark ? "border-white/10 bg-white/5" : "border-gray-200 bg-gray-50"}`}>
-                    <span className={`text-sm font-medium ${isDark ? "text-gray-300" : "text-gray-700"}`}>Artigo gerado</span>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`text-sm font-medium ${isDark ? "text-gray-300" : "text-gray-700"}`}>Artigo gerado</span>
+                      {articleId && (
+                        <span className="flex items-center gap-1 text-xs text-green-400">
+                          <Check className="w-3 h-3" />
+                          Salvo
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* Publish toggle pós-geração */}
+                      {articleId && (
+                        <button
+                          onClick={handleTogglePublish}
+                          disabled={togglingPublish}
+                          title={isPublished ? "Remover do blog" : "Publicar no blog"}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                            isPublished
+                              ? isDark ? "bg-green-500/20 text-green-400 hover:bg-green-500/30" : "bg-green-100 text-green-700 hover:bg-green-200"
+                              : isDark ? "hover:bg-white/10 text-gray-400 hover:text-white" : "hover:bg-gray-200 text-gray-600"
+                          }`}
+                        >
+                          {togglingPublish ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : isPublished ? (
+                            <Globe className="w-3.5 h-3.5" />
+                          ) : (
+                            <GlobeLock className="w-3.5 h-3.5" />
+                          )}
+                          {isPublished ? "Publicado" : "Não publicado"}
+                        </button>
+                      )}
+                      {articleId && isPublished && (
+                        <a
+                          href={`/blog/${articleId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                            isDark ? "hover:bg-white/10 text-gray-400 hover:text-white" : "hover:bg-gray-200 text-gray-600"
+                          }`}
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          Ver no blog
+                        </a>
+                      )}
                       <button
                         onClick={handleCopy}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
@@ -446,10 +557,30 @@ export default function ArticlePage() {
                         }`}
                       >
                         <Download className="w-3.5 h-3.5" />
-                        Baixar .md
+                        .md
                       </button>
                     </div>
                   </div>
+
+                  {/* Tags */}
+                  {articleTags.length > 0 && (
+                    <div className={`flex flex-wrap gap-2 px-5 py-2 border-b ${isDark ? "border-white/10" : "border-gray-200"}`}>
+                      {articleTags.map((tag) => (
+                        <a
+                          key={tag}
+                          href={`/blog?tag=${encodeURIComponent(tag)}`}
+                          className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                            isDark
+                              ? "bg-blue-500/15 text-blue-400 hover:bg-blue-500/25"
+                              : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                          }`}
+                        >
+                          {tag}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+
                   <div ref={articleRef} className="p-6 overflow-y-auto max-h-[70vh] custom-scrollbar">
                     <MessageContent text={article} role="model" theme={theme} />
                   </div>
