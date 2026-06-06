@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseAnon } from '@/lib/supabase-server';
+import { getArticleById } from '@/lib/articles-storage';
 
 export async function GET(
     _request: NextRequest,
@@ -7,19 +7,13 @@ export async function GET(
 ) {
     try {
         const { id } = await params;
-        const supabase = createServerSupabaseAnon();
-        const { data, error } = await supabase
-            .from('articles')
-            .select('*')
-            .eq('id', id)
-            .eq('published', true)
-            .single();
+        const article = await getArticleById(id);
 
-        if (error || !data) {
+        if (!article) {
             return NextResponse.json({ error: 'Artigo não encontrado' }, { status: 404 });
         }
 
-        return NextResponse.json({ article: data });
+        return NextResponse.json({ article });
     } catch (error) {
         return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
     }

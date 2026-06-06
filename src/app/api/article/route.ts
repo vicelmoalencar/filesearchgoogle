@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { FILE_SEARCH_STORE_NAME, MODEL_NAME } from "@/lib/gemini";
 import { getApiKeyById } from "@/lib/api-keys-env";
-import { getEmailFromAuthHeader, createServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getEmailFromAuthHeader } from "@/lib/supabase-server";
+import { saveArticle } from "@/lib/articles-storage";
 import { trackUsage, checkAndDeductCredits } from "@/lib/creditos-centralizados";
 
 function estimateTokens(text: string): number {
@@ -206,36 +207,25 @@ IMPORTANTE: Baseie-se EXCLUSIVAMENTE nos documentos disponíveis via File Search
         const tags = await generateTags(genAIClient, topic, title);
         console.log('[Article] Tags geradas:', tags);
 
-        // Salvar artigo no Supabase
+        // Salvar artigo no PostgreSQL
         let articleId: string | null = null;
         if (userEmail) {
-            try {
-                const supabase = createServerSupabaseAdmin();
-                const { data: saved, error: saveError } = await supabase
-                    .from('articles')
-                    .insert({
-                        user_email: userEmail,
-                        title,
-                        content: article,
-                        topic: topic.trim(),
-                        tone: tone || 'informativo',
-                        length: length || 'medio',
-                        structure: structure || 'completo',
-                        tags,
-                        published: publish !== false,
-                        sources_used: keyIds,
-                    })
-                    .select('id')
-                    .single();
-
-                if (saveError) {
-                    console.error('[Article] Erro ao salvar no Supabase:', saveError.message);
-                } else {
-                    articleId = saved?.id ?? null;
-                    console.log('[Article] Artigo salvo, id:', articleId);
-                }
-            } catch (err) {
-                console.error('[Article] Exceção ao salvar:', err instanceof Error ? err.message : err);
+            articleId = await saveArticle({
+                userEmail,
+                title,
+                content: article,
+                topic: topic.trim(),
+                tone: tone || 'informativo',
+                length: length || 'medio',
+                structure: structure || 'completo',
+                tags,
+                published: publish !== false,
+                sourcesUsed: keyIds,
+            });
+            if (articleId) {
+                console.log('[Article] Artigo salvo no PostgreSQL, id:', articleId);
+            } else {
+                console.warn('[Article] Falha ao salvar artigo no PostgreSQL');
             }
         } else {
             console.warn('[Article] userEmail nulo — artigo não salvo no banco');
