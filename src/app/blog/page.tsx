@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { BookOpen, Tag, Calendar, ChevronLeft, ChevronRight, Search, FileText } from "lucide-react";
+import { Suspense, useState, useEffect, useCallback } from "react";
+import { BookOpen, Tag, Calendar, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -25,12 +25,6 @@ function formatDate(iso: string) {
   });
 }
 
-function maskEmail(email: string) {
-  const [user, domain] = email.split("@");
-  if (!user || !domain) return email;
-  return `${user.slice(0, 2)}***@${domain}`;
-}
-
 const TONE_LABELS: Record<string, string> = {
   informativo: "Informativo",
   tecnico: "Técnico",
@@ -38,12 +32,11 @@ const TONE_LABELS: Record<string, string> = {
   academico: "Acadêmico",
 };
 
-export default function BlogPage() {
+function BlogContent() {
   const [articles, setArticles] = useState<ArticleSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [searchTag, setSearchTag] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
   const { theme } = useTheme();
@@ -56,9 +49,9 @@ export default function BlogPage() {
   const fetchArticles = useCallback(async (p: number, tag: string | null) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(p) });
-      if (tag) params.set("tag", tag);
-      const res = await fetch(`/api/articles?${params}`);
+      const qs = new URLSearchParams({ page: String(p) });
+      if (tag) qs.set("tag", tag);
+      const res = await fetch(`/api/articles?${qs}`);
       const data = await res.json();
       setArticles(data.articles || []);
       setTotal(data.total || 0);
@@ -175,7 +168,7 @@ export default function BlogPage() {
               {activeTag ? `Nenhum artigo com a tag "${activeTag}"` : "Nenhum artigo publicado ainda"}
             </p>
             <p className={`text-sm ${descClass}`}>
-              {activeTag ? "Tente outra tag ou" : ""}{" "}
+              {activeTag ? "Tente outra tag ou " : ""}
               <Link href="/article" className="text-blue-400 hover:underline">
                 gere o primeiro artigo
               </Link>
@@ -196,7 +189,6 @@ export default function BlogPage() {
                   <p className={`text-xs line-clamp-2 ${descClass}`}>{art.topic}</p>
                 </div>
 
-                {/* Tags */}
                 {art.tags?.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {art.tags.slice(0, 3).map((tag) => (
@@ -222,7 +214,6 @@ export default function BlogPage() {
                   </div>
                 )}
 
-                {/* Meta */}
                 <div className={`flex items-center justify-between text-xs ${descClass}`}>
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
@@ -275,5 +266,21 @@ export default function BlogPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function BlogPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="flex gap-1.5">
+          <div className="w-2.5 h-2.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+          <div className="w-2.5 h-2.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+          <div className="w-2.5 h-2.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+        </div>
+      </div>
+    }>
+      <BlogContent />
+    </Suspense>
   );
 }

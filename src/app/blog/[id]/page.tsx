@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { use, useState, useEffect } from "react";
 import { ArrowLeft, Calendar, Tag, BookOpen, Share2, Check } from "lucide-react";
 import Link from "next/link";
 import MessageContent from "@/components/MessageContent";
@@ -41,11 +41,12 @@ const LENGTH_LABELS: Record<string, string> = {
 };
 
 export default function ArticleDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [articleId, setArticleId] = useState<string>("");
 
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -53,8 +54,6 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     const fetchArticle = async () => {
       try {
-        const { id } = await params;
-        setArticleId(id);
         const res = await fetch(`/api/articles/${id}`);
         if (!res.ok) {
           setNotFound(true);
@@ -69,7 +68,7 @@ export default function ArticleDetailPage({ params }: { params: Promise<{ id: st
       }
     };
     fetchArticle();
-  }, [params.id]);
+  }, [id]);
 
   const handleShare = async () => {
     const url = window.location.href;
